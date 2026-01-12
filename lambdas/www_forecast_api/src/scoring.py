@@ -102,10 +102,67 @@ def _label_from_score(score: float, thresholds: dict[str, float]) -> str:
     return "bad"
 
 
-def _pick_reasons(sport: str, metrics: dict[str, float | None], subscores: dict[str, float]) -> list[str]:
+def _check_hard_limits(
+    metrics: dict[str, float | None],
+    hard_limits: dict[str, dict[str, float]],
+    sport_key: str,
+) -> tuple[list[str], list[str]]:
+    """
+    Check hard limits and return flags and reasons for violations.
+    Returns: (flags, reasons)
+    """
+    flags: list[str] = []
     reasons: list[str] = []
 
-    # Generic “nice” reasons for any sport
+    for limit_key, limit_cfg in hard_limits.items():
+        # Map limit keys to metric keys
+        metric_key_map = {
+            "wave_height_m": "wave_height",
+            "wind_wave_height_m": "wind_wave_height",
+            "current_velocity_kmh": "ocean_current_velocity_kmh",
+        }
+        metric_key = metric_key_map.get(limit_key, limit_key.replace("_m", "").replace("_kmh", "_kmh"))
+        
+        value = metrics.get(metric_key)
+        if value is None:
+            continue
+
+        bad_from = limit_cfg.get("bad_from")
+        if bad_from is not None and value >= bad_from:
+            # Generate flag name with sport context
+            if "wave_height" in limit_key and sport_key == "sup":
+                flags.append("too_wavy_for_sup")
+                reasons.append(f"Wave height {value:.2f}m is above SUP safety limit {bad_from:.2f}m")
+            elif "wave_height" in limit_key:
+                flags.append("too_wavy")
+                reasons.append(f"Wave height {value:.2f}m exceeds safety limit {bad_from:.2f}m")
+            elif "wind_wave_height" in limit_key:
+                flags.append("too_choppy")
+                reasons.append(f"Wind wave height {value:.2f}m exceeds limit {bad_from:.2f}m")
+            elif "current" in limit_key:
+                flags.append("current_too_strong")
+                reasons.append(f"Current {value:.2f} km/h exceeds safety limit {bad_from:.2f} km/h")
+
+    return flags, reasons
+
+
+def _pick_reasons(
+    sport: str,
+    metrics: dict[str, float | None],
+    subscores: dict[str, float],
+    flags: list[str],
+) -> list[str]:
+    """
+    Generate positive reasons when conditions are good.
+    Negative reasons (from hard limits) are handled separately.
+    """
+    reasons: list[str] = []
+
+    # If we have hard limit violations, those are already in flags/reasons
+    if flags:
+        return reasons  # Don't add positive reasons if unsafe
+
+    # Generic "nice" reasons for any sport
     wh = metrics.get("wave_height")
     wp = metrics.get("wave_period")
     wwh = metrics.get("wind_wave_height")
@@ -315,12 +372,7 @@ def score_hour_for_sport(
             else:
                 subscores["current"] = _clamp01(1.0 - ((cv - warn_from) / max(bad_from - warn_from, 1e-9)))
 
-    # Water temp (comfort; optional)
-    if "water_temp_c" in th:
-        wt = metrics.get("sea_surface_temperature")
-        nice_from = th["water_temp_c"].get("nice_from", 18.0)
-        if wt is not None:
-            subscores["water_temp"] = _clamp01(wt / nice_from) if wt < nice_from else 1.0
+    # Water temp removed from scoring - now only in context
 
     # Weighted aggregation (only for keys present)
     weights = sport.get("weights", {})
@@ -345,14 +397,56 @@ def score_hour_for_sport(
             score *= (1.0 - 0.15 * ((cv - warn) / max(hard - warn, 1e-9)))
 
     score = _clamp01(score)
-    label = _label_from_score(score, thresholds)
+
+    # Check hard limits
+    hard_limits = sport.get("hard_limits", {})
+    flags: list[str] = []
+    reasons: list[str] = []
+    
+    if hard_limits:
+        limit_flags, limit_reasons = _check_hard_limits(metrics, hard_limits, sport_key)
+        flags.extend(limit_flags)
+        reasons.extend(limit_reasons)
+        
+        # If any hard limit violated, force bad label and clamp score
+        if limit_flags:
+            label = "bad"
+            score = min(score, 0.2)  # Clamp score when unsafe
+        else:
+            label = _label_from_score(score, thresholds)
+    else:
+        label = _label_from_score(score, thresholds)
+
+    # Add positive reasons if no hard limit violations
+    if not flags:
+        positive_reasons = _pick_reasons(sport_key, metrics, subscores, flags)
+        reasons.extend(positive_reasons)
+
+    # Build context from context_fields
+    context: dict[str, float | None] = {}
+    context_fields = sport.get("context_fields", [])
+    
+    # Map context field names to metric keys and format
+    for field in context_fields:
+        if field == "sea_surface_temperature":
+            context["water_temp_c"] = metrics.get("sea_surface_temperature")
+        elif field == "wave_height":
+            context["wave_height_m"] = metrics.get("wave_height")
+        elif field == "wave_period":
+            context["wave_period_s"] = metrics.get("wave_period")
+        elif field == "wind_wave_height":
+            context["wind_wave_height_m"] = metrics.get("wind_wave_height")
+        elif field == "ocean_current_velocity":
+            context["current_kmh"] = metrics.get("ocean_current_velocity_kmh")
 
     return {
         "sport": sport_key,
-        "score": round(score, 3),
+        "date": hour.get("date"),
         "label": label,
-        "reasons": _pick_reasons(sport_key, metrics, subscores),
-        "subscores": {k: round(v, 3) for k, v in subscores.items()},
+        "score": round(score, 3),
+        "context": {k: round(v, 2) if v is not None else None for k, v in context.items() if v is not None},
+        "flags": flags,
+        "reasons": reasons,
     }
 
 
@@ -368,6 +462,8 @@ def score_forecast(
 
     out: list[dict[str, Any]] = []
     for hour in hourly_records:
+        # Each sport result now includes date, so we can return flat list or grouped
+        # Returning grouped by date for easier consumption
         row = {
             "date": hour.get("date"),
             "sports": {s: score_hour_for_sport(hour, sport_key=s, rules=rules) for s in sports_list},

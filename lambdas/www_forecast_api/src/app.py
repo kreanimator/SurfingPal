@@ -66,8 +66,11 @@ class ForecastAPI:
                     "ocean_current_velocity",
                     "sea_surface_temperature",
                 ],
+                "hard_limits": {
+                    "current_velocity_kmh": {"bad_from": 8.0},  # very strong current
+                },
                 "thresholds": {
-                    # “fun zone”
+                    # "fun zone"
                     "wave_height_m": {"min": 0.6, "ideal": (0.9, 2.0), "max": 3.0},
                     "wave_period_s": {"min": 7.0, "ideal": (9.0, 14.0), "max": 18.0},
                     # cleaner surf tends to be swell-dominant, not wind-chop dominant
@@ -79,15 +82,20 @@ class ForecastAPI:
                         "great_from": 0.75,
                     },
                     "current_velocity_kmh": {"warn_from": 3.0, "bad_from": 6.0},
-                    "water_temp_c": {"nice_from": 18.0},  # UX-only “comfort”
+                    "water_temp_c": {"nice_from": 18.0},  # UX-only "comfort"
                 },
                 "weights": {
                     "wave_height": 0.30,
                     "wave_period": 0.25,
                     "cleanliness": 0.25,  # from wind_wave_* + swell_share
-                    "current": 0.10,
-                    "water_temp": 0.10,
+                    "current": 0.20,
                 },
+                "context_fields": [
+                    "sea_surface_temperature",
+                    "wave_height",
+                    "wave_period",
+                    "ocean_current_velocity",
+                ],
                 "ux": {
                     "chips": [
                         {"label": "Wave", "fields": ["wave_height", "wave_period", "wave_direction"]},
@@ -108,25 +116,35 @@ class ForecastAPI:
                     "ocean_current_velocity",
                     "sea_surface_temperature",
                 ],
+                "hard_limits": {
+                    "wave_height_m": {"bad_from": 0.8},  # above this, not safe for SUP
+                    "wind_wave_height_m": {"bad_from": 0.45},  # too choppy
+                    "current_velocity_kmh": {"bad_from": 5.0},  # too strong current
+                },
                 "thresholds": {
                     # SUP flatwater likes low waves/chop
-                    "wave_height_m": {"great_max": 0.4, "ok_max": 0.7, "bad_from": 1.0},
-                    "wind_wave_height_m": {"great_max": 0.2, "ok_max": 0.35, "bad_from": 0.6},
+                    "wave_height_m": {"great_max": 0.3, "ok_max": 0.5},
+                    "wind_wave_height_m": {"great_max": 0.15, "ok_max": 0.25},
                     "wind_wave_period_s": {"bad_max": 3.5},
                     "current_velocity_kmh": {"warn_from": 2.5, "bad_from": 5.0},
                     "water_temp_c": {"nice_from": 18.0},
                 },
                 "weights": {
-                    "calmness": 0.60,  # wave_height + wind_wave_*
-                    "current": 0.25,
-                    "water_temp": 0.15,
+                    "calmness": 0.80,  # wave_height + wind_wave_*
+                    "current": 0.20,
                 },
+                "context_fields": [
+                    "sea_surface_temperature",
+                    "wave_height",
+                    "wind_wave_height",
+                    "ocean_current_velocity",
+                ],
                 "ux": {
                     "primary_message": "Calmer is better for SUP. Small chop quickly becomes tiring.",
                 },
             },
 
-            # 3) SUP Surf (optional extra mode; still “SUP”, but wave-focused)
+            # 3) SUP Surf (optional extra mode; still "SUP", but wave-focused)
             "sup_surf": {
                 "enabled": True,
                 "inputs": [
@@ -134,6 +152,11 @@ class ForecastAPI:
                     "wind_wave_height", "wind_wave_period",
                     "ocean_current_velocity",
                 ],
+                "hard_limits": {
+                    "wave_height_m": {"bad_from": 2.8},  # too big for SUP surf
+                    "wind_wave_height_m": {"bad_from": 1.2},  # too choppy
+                    "current_velocity_kmh": {"bad_from": 6.0},
+                },
                 "thresholds": {
                     "wave_height_m": {"min": 0.4, "ideal": (0.6, 1.5), "max": 2.5},
                     "wave_period_s": {"min": 7.0, "ideal": (8.5, 13.0), "max": 18.0},
@@ -146,6 +169,12 @@ class ForecastAPI:
                     "cleanliness": 0.30,
                     "current": 0.15,
                 },
+                "context_fields": [
+                    "wave_height",
+                    "wave_period",
+                    "wind_wave_height",
+                    "ocean_current_velocity",
+                ],
             },
 
             # 4) Windsurfing (wave/water-state proxy — add real wind later)
@@ -156,8 +185,12 @@ class ForecastAPI:
                     "wave_height", "wave_period",
                     "ocean_current_velocity",
                 ],
+                "hard_limits": {
+                    "wave_height_m": {"bad_from": 4.5},  # too dangerous
+                    "current_velocity_kmh": {"bad_from": 7.0},
+                },
                 "thresholds": {
-                    # Using wind_wave_height as “there is wind energy on the surface”
+                    # Using wind_wave_height as "there is wind energy on the surface"
                     "wind_wave_height_m": {"min": 0.25, "ideal": (0.4, 1.2), "max": 2.0},
                     # Too short => messy slop; too big => advanced conditions
                     "wind_wave_period_s": {"min": 2.0, "ideal": (2.5, 5.0), "max": 7.0},
@@ -172,6 +205,12 @@ class ForecastAPI:
                     "sea_state": 0.25,
                     "current": 0.20,
                 },
+                "context_fields": [
+                    "wave_height",
+                    "wave_period",
+                    "wind_wave_height",
+                    "ocean_current_velocity",
+                ],
                 "ux": {
                     "primary_message": "This uses wind-waves as a wind proxy. Add wind_speed_10m for reliable windsurf calls.",
                 },
@@ -185,6 +224,10 @@ class ForecastAPI:
                     "wave_height",
                     "ocean_current_velocity",
                 ],
+                "hard_limits": {
+                    "wave_height_m": {"bad_from": 4.0},  # too dangerous
+                    "current_velocity_kmh": {"bad_from": 7.0},
+                },
                 "thresholds": {
                     # Many kite sessions happen in choppy but manageable sea states
                     "wind_wave_height_m": {"min": 0.2, "ideal": (0.3, 0.9), "max": 1.6},
@@ -197,6 +240,11 @@ class ForecastAPI:
                     "sea_state": 0.20,
                     "current": 0.20,
                 },
+                "context_fields": [
+                    "wave_height",
+                    "wind_wave_height",
+                    "ocean_current_velocity",
+                ],
                 "ux": {
                     "primary_message": "Proxy-based. For kite, wind strength & gusts matter most — combine with Weather API wind.",
                 },
