@@ -6,9 +6,11 @@ A modern, minimalistic Flutter application for checking marine weather forecasts
 
 - 🏄‍♂️ Beautiful, surf-inspired UI design
 - 🌊 Real-time forecast data for multiple water sports
+- 📍 **Automatic location detection** - Uses your device's GPS
 - 📱 Cross-platform support (iOS, Android, Web)
 - 🎨 Modern Material Design 3 with custom surf theme
 - ⚡ Fast and responsive user experience
+- 🔧 Manual coordinate entry fallback
 
 ## Prerequisites
 
@@ -25,6 +27,10 @@ Before you begin, ensure you have the following installed:
   - VS Code with Flutter extension
 
 - **Backend API** running (see backend README)
+
+- **Location Permissions** (for mobile):
+  - The app will request location permissions on first use
+  - For web: Browser will prompt for location access
 
 ## Installation
 
@@ -191,6 +197,17 @@ Edit `lib/theme/app_theme.dart` to customize colors, fonts, and styling.
    - Ensure backend is running on `http://localhost:8000`
    - Check firewall settings
    - For mobile devices, use your computer's IP address instead of `localhost`
+
+2. **Location permission denied**:
+   - **Android**: Go to Settings → Apps → SurfingPal → Permissions → Location → Allow
+   - **iOS**: Go to Settings → Privacy → Location Services → SurfingPal → While Using App
+   - **Web**: Click "Allow" when browser prompts for location access
+   - You can also manually enter coordinates if location is unavailable
+
+3. **Location not working on web**:
+   - Ensure you're using HTTPS (or localhost for development)
+   - Check browser console for permission errors
+   - Some browsers require user interaction before requesting location
 
 2. **Dependencies not installing**:
    ```bash

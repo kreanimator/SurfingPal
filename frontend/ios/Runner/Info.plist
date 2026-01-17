@@ -45,5 +45,11 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SurfingPal needs your location to provide accurate surf forecasts for your area.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>SurfingPal needs your location to provide accurate surf forecasts for your area.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SurfingPal needs your location to provide accurate surf forecasts for your area.</string>
 </dict>
 </plist>
