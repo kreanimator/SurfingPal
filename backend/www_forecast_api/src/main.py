@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 import uvicorn
 
-from app import ForecastAPI
+from forecast_api import ForecastAPI
 from scoring import score_forecast
 
 app = FastAPI(
