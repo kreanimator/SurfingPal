@@ -2,3 +2,6 @@ openmeteo-requests
 requests-cache
 retry-requests
 pandas
+fastapi
+uvicorn[standard]
+pydantic
