@@ -72,6 +72,7 @@ class SportForecast {
   final List<String> flags;
   final List<String> reasons;
   final List<Tip> tips;
+  final Map<String, List<String>> conditionLabels;
 
   SportForecast({
     required this.sport,
@@ -82,9 +83,21 @@ class SportForecast {
     required this.flags,
     required this.reasons,
     this.tips = const [],
+    this.conditionLabels = const {},
   });
 
   factory SportForecast.fromJson(Map<String, dynamic> json) {
+    // Parse condition_labels if present
+    Map<String, List<String>> conditionLabels = {};
+    if (json['condition_labels'] != null) {
+      final labelsMap = json['condition_labels'] as Map<String, dynamic>;
+      conditionLabels = {
+        'green': (labelsMap['green'] as List?)?.map((e) => e as String).toList() ?? [],
+        'yellow': (labelsMap['yellow'] as List?)?.map((e) => e as String).toList() ?? [],
+        'red': (labelsMap['red'] as List?)?.map((e) => e as String).toList() ?? [],
+      };
+    }
+    
     return SportForecast(
       sport: json['sport'] as String,
       date: json['date'] as String,
@@ -94,6 +107,7 @@ class SportForecast {
       flags: (json['flags'] as List?)?.map((e) => e as String).toList() ?? [],
       reasons: (json['reasons'] as List).map((e) => e as String).toList(),
       tips: (json['tips'] as List?)?.map((e) => Tip.fromJson(e as Map<String, dynamic>)).toList() ?? [],
+      conditionLabels: conditionLabels,
     );
   }
 

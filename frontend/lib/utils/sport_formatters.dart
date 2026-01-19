@@ -188,4 +188,27 @@ class SportFormatters {
     
     return [];
   }
+
+  /// Normalize snake_case condition label to Title Case
+  /// Example: "low_chop" -> "Low Chop", "mild_current" -> "Mild Current"
+  static String normalizeConditionLabel(String label) {
+    // If it's already human-readable (contains spaces and proper capitalization), return as-is
+    if (label.contains(' ') && label[0] == label[0].toUpperCase()) {
+      return label;
+    }
+
+    // Convert snake_case to Title Case
+    return label
+        .split('_')
+        .map((word) {
+          // Handle special cases
+          if (word.toLowerCase() == 'sup') return 'SUP';
+          if (word.toLowerCase() == 'ok') return 'OK';
+          // Capitalize first letter
+          return word.isEmpty 
+              ? word 
+              : word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
+  }
 }

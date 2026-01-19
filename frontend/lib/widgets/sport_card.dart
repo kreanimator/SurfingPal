@@ -128,32 +128,9 @@ class _HeroSportCard extends StatelessWidget {
               color: AppTheme.slateGray.withOpacity(0.7),
             ),
           ),
-          // Condition labels (good for Great, bad for Bad, both for OK)
+          // Condition labels only - displayed in order: green → yellow → red
           ..._buildConditionLabels(sport),
           
-          if (sport.reasons.isNotEmpty && sport.flags.isEmpty) ...[
-            const SizedBox(height: 8),
-            ...sport.reasons.take(2).map((reason) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.check_circle, size: 14, color: AppTheme.seafoamGreen),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        reason,
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: AppTheme.slateGray.withOpacity(0.7),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
           // Tips: max 2-3, categorize silently (no label)
           if (sport.tips.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -214,185 +191,94 @@ class _HeroSportCard extends StatelessWidget {
   }
 
   List<Widget> _buildConditionLabels(SportForecast sport) {
-    final status = sport.label.toLowerCase();
-    final context = sport.context;
     final labels = <Widget>[];
     
-    // Get good and bad conditions
-    final goodConditions = <_ConditionLabel>[];
-    final badConditions = <_ConditionLabel>[];
+    // Use condition labels from backend if available
+    final conditionLabels = sport.conditionLabels;
+    if (conditionLabels.isEmpty) {
+      return labels; // No labels to display
+    }
     
-    // Wave conditions (for wave sports)
-    if (sport.sport == 'surfing' || sport.sport == 'sup_surf') {
-      final waveHeight = context['wave_height_m'] as double?;
-      final wavePeriod = context['wave_period_s'] as double?;
+    final greenLabels = conditionLabels['green'] ?? [];
+    final yellowLabels = conditionLabels['yellow'] ?? [];
+    final redLabels = conditionLabels['red'] ?? [];
+    
+    // Helper to build a label chip
+    Widget buildLabelChip(String labelText, Color color) {
+      // Determine if it's a good condition (green) or bad condition (yellow/red)
+      final isGood = color == AppTheme.seafoamGreen || 
+                     color == AppTheme.seafoamGreen.withOpacity(0.8);
       
-      if (waveHeight != null && wavePeriod != null) {
-        if (waveHeight >= 0.5 && wavePeriod >= 6) {
-          goodConditions.add(_ConditionLabel('Great Waves', AppTheme.seafoamGreen));
-        } else if (waveHeight >= 0.3 && wavePeriod >= 4) {
-          goodConditions.add(_ConditionLabel('Good Waves', AppTheme.seafoamGreen.withOpacity(0.8)));
-        } else if (status == 'ok' || status == 'marginal') {
-          // For OK status, show why waves aren't great
-          if (waveHeight < 0.3 || wavePeriod < 4) {
-            badConditions.add(_ConditionLabel('Small Waves', AppTheme.okYellow));
-          }
-        }
-      }
-      
-      // Chop (wind waves) - bad condition
-      final windWaveHeight = context['wind_wave_height_m'] as double?;
-      if (windWaveHeight != null) {
-        if (windWaveHeight >= 0.5) {
-          badConditions.add(_ConditionLabel('Chop', AppTheme.coralAccent));
-        } else if (windWaveHeight >= 0.3) {
-          badConditions.add(_ConditionLabel('Chop', AppTheme.okYellow));
-        } else if (windWaveHeight >= 0.15 && (status == 'ok' || status == 'marginal')) {
-          // Show moderate chop for OK status (explains why not Great)
-          badConditions.add(_ConditionLabel('Chop', AppTheme.okYellow.withOpacity(0.7)));
-        }
-      }
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isGood)
+              const Icon(
+                Icons.check,
+                size: 12,
+                color: AppTheme.white,
+              )
+            else
+              const Icon(
+                Icons.close,
+                size: 12,
+                color: AppTheme.white,
+              ),
+            const SizedBox(width: 4),
+            Text(
+              SportFormatters.normalizeConditionLabel(labelText),
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.white,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      );
     }
     
-    // Current conditions (important for SUP, SUP Surf)
-    if (sport.sport == 'sup' || sport.sport == 'sup_surf') {
-      final current = context['current_kmh'] as double?;
-      if (current != null) {
-        if (current >= 5) {
-          badConditions.add(_ConditionLabel('Strong Current', AppTheme.coralAccent));
-        } else if (current >= 3) {
-          badConditions.add(_ConditionLabel('Current', AppTheme.okYellow));
-        } else if (current <= 3 && status == 'great') {
-          // Mild current is good for SUP
-          goodConditions.add(_ConditionLabel('Mild Current', AppTheme.seafoamGreen.withOpacity(0.8)));
-        }
-      }
+    // Display in strict order: green → yellow → red
+    if (greenLabels.isNotEmpty) {
+      labels.add(const SizedBox(height: 8));
+      labels.add(
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: greenLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.seafoamGreen.withOpacity(0.8))).toList(),
+        ),
+      );
     }
-    
-    // Wind conditions (for wind sports)
-    // Use wind_wave_height as proxy for wind (as backend does - ideal 0.4-1.2m)
-    if (sport.sport == 'windsurfing' || sport.sport == 'kitesurfing') {
-      final windSpeed = context['wind_speed_kmh'] as double?;
-      final windWaveHeight = context['wind_wave_height_m'] as double?;
-      
-      // Prefer wind_speed if available, otherwise use wind_wave_height as proxy
-      if (windSpeed != null) {
-        if (windSpeed >= 25) {
-          goodConditions.add(_ConditionLabel('Strong Wind', AppTheme.seafoamGreen));
-        } else if (windSpeed >= 15) {
-          goodConditions.add(_ConditionLabel('Good Wind', AppTheme.seafoamGreen.withOpacity(0.8)));
-        } else if (windSpeed >= 10 && windSpeed < 15) {
-          // Moderate wind - OK but not great
-          if (status == 'ok' || status == 'marginal') {
-            badConditions.add(_ConditionLabel('Light Wind', AppTheme.okYellow));
-          }
-        } else if (windSpeed < 10) {
-          badConditions.add(_ConditionLabel('No Wind', AppTheme.coralAccent));
-        }
-      } else if (windWaveHeight != null) {
-        // Use wind_wave_height as proxy (backend logic: ideal 0.4-1.2m, min 0.25m)
-        if (windWaveHeight >= 0.4 && windWaveHeight <= 1.2) {
-          goodConditions.add(_ConditionLabel('Good Wind', AppTheme.seafoamGreen));
-        } else if (windWaveHeight >= 0.25 && windWaveHeight < 0.4) {
-          // Moderate wind - OK but not great (show why it's not Great)
-          if (status == 'ok' || status == 'marginal') {
-            badConditions.add(_ConditionLabel('Light Wind', AppTheme.okYellow));
-          }
-        } else if (windWaveHeight < 0.25) {
-          badConditions.add(_ConditionLabel('No Wind', AppTheme.coralAccent));
-        }
-      }
+    if (yellowLabels.isNotEmpty) {
+      labels.add(SizedBox(height: greenLabels.isNotEmpty ? 6 : 8));
+      labels.add(
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: yellowLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.okYellow)).toList(),
+        ),
+      );
     }
-    
-    // Current for all sports (show as positive when mild)
-    final current = context['current_kmh'] as double?;
-    if (current != null && current <= 3.0) {
-      // Only add if not already handled by SUP-specific logic above
-      if (sport.sport != 'sup' && sport.sport != 'sup_surf') {
-        if (status == 'great' || status == 'ok' || status == 'marginal') {
-          goodConditions.add(_ConditionLabel('Mild Current', AppTheme.seafoamGreen.withOpacity(0.8)));
-        }
-      }
-    }
-    
-    // Display based on status
-    if (status == 'ok' || status == 'marginal') {
-      // Show both good and bad for OK/Marginal
-      if (goodConditions.isNotEmpty) {
-        labels.add(const SizedBox(height: 8));
-        labels.add(
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: goodConditions.map<Widget>((label) => _buildLabelChip(label)).toList(),
-          ),
-        );
-      }
-      if (badConditions.isNotEmpty) {
-        labels.add(const SizedBox(height: 6));
-        labels.add(
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: badConditions.map<Widget>((label) => _buildLabelChip(label)).toList(),
-          ),
-        );
-      }
-    } else if (status == 'great') {
-      // Show only good conditions
-      if (goodConditions.isNotEmpty) {
-        labels.add(const SizedBox(height: 8));
-        labels.add(
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: goodConditions.map<Widget>((label) => _buildLabelChip(label)).toList(),
-          ),
-        );
-      }
-    } else if (status == 'bad') {
-      // Show only bad conditions
-      if (badConditions.isNotEmpty) {
-        labels.add(const SizedBox(height: 8));
-        labels.add(
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: badConditions.map<Widget>((label) => _buildLabelChip(label)).toList(),
-          ),
-        );
-      }
+    if (redLabels.isNotEmpty) {
+      labels.add(SizedBox(height: (greenLabels.isNotEmpty || yellowLabels.isNotEmpty) ? 6 : 8));
+      labels.add(
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: redLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.coralAccent)).toList(),
+        ),
+      );
     }
     
     return labels;
   }
-
-  Widget _buildLabelChip(_ConditionLabel label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: label.color,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label.text,
-        style: GoogleFonts.inter(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.white,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
-/// Helper class for condition labels
-class _ConditionLabel {
-  final String text;
-  final Color color;
-
-  _ConditionLabel(this.text, this.color);
 }
 
 class _AccordionSportCard extends StatelessWidget {
@@ -534,36 +420,8 @@ class _AccordionSportCard extends StatelessWidget {
                       color: AppTheme.slateGray.withOpacity(0.7),
                     ),
                   ),
-                  // Condition labels (good for Great, bad for Bad, both for OK)
+                  // Condition labels only - displayed in order: green → yellow → red
                   ..._buildConditionLabels(sport),
-                  if (sport.reasons.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    ...sport.reasons.map((reason) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.check_circle,
-                              size: 14,
-                              color: AppTheme.seafoamGreen,
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                reason,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: AppTheme.slateGray.withOpacity(0.7),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
                   // Tips: max 2-3, categorize silently
                   if (sport.tips.isNotEmpty) ...[
                     const SizedBox(height: 12),
@@ -628,179 +486,96 @@ class _AccordionSportCard extends StatelessWidget {
   }
 
   List<Widget> _buildConditionLabels(SportForecast sport) {
-    final status = sport.label.toLowerCase();
-    final context = sport.context;
     final labels = <Widget>[];
     
-    // Get good and bad conditions
-    final goodConditions = <_ConditionLabel>[];
-    final badConditions = <_ConditionLabel>[];
-    
-    // Wave conditions (for wave sports)
-    if (sport.sport == 'surfing' || sport.sport == 'sup_surf') {
-      final waveHeight = context['wave_height_m'] as double?;
-      final wavePeriod = context['wave_period_s'] as double?;
-      
-      if (waveHeight != null && wavePeriod != null) {
-        if (waveHeight >= 0.5 && wavePeriod >= 6) {
-          goodConditions.add(_ConditionLabel('Great Waves', AppTheme.seafoamGreen));
-        } else if (waveHeight >= 0.3 && wavePeriod >= 4) {
-          goodConditions.add(_ConditionLabel('Good Waves', AppTheme.seafoamGreen.withOpacity(0.8)));
-        }
-      }
-      
-      // Chop (wind waves) - bad condition
-      final windWaveHeight = context['wind_wave_height_m'] as double?;
-      if (windWaveHeight != null) {
-        if (windWaveHeight >= 0.5) {
-          badConditions.add(_ConditionLabel('Chop', AppTheme.coralAccent));
-        } else if (windWaveHeight >= 0.3) {
-          badConditions.add(_ConditionLabel('Chop', AppTheme.okYellow));
-        } else if (windWaveHeight >= 0.15 && (status == 'ok' || status == 'marginal')) {
-          // Show moderate chop for OK status (explains why not Great)
-          badConditions.add(_ConditionLabel('Chop', AppTheme.okYellow.withOpacity(0.7)));
-        }
-      }
-      
-      // For OK status, show why waves aren't great
-      if ((status == 'ok' || status == 'marginal') && waveHeight != null && wavePeriod != null) {
-        if (waveHeight < 0.3 || wavePeriod < 4) {
-          badConditions.add(_ConditionLabel('Small Waves', AppTheme.okYellow));
-        }
-      }
+    // Use condition labels from backend if available
+    final conditionLabels = sport.conditionLabels;
+    if (conditionLabels.isEmpty) {
+      return labels; // No labels to display
     }
     
-    // Current conditions (important for SUP, SUP Surf)
-    if (sport.sport == 'sup' || sport.sport == 'sup_surf') {
-      final current = context['current_kmh'] as double?;
-      if (current != null) {
-        if (current >= 5) {
-          badConditions.add(_ConditionLabel('Strong Current', AppTheme.coralAccent));
-        } else if (current >= 3) {
-          badConditions.add(_ConditionLabel('Current', AppTheme.okYellow));
-        } else if (current <= 3 && status == 'great') {
-          // Mild current is good for SUP
-          goodConditions.add(_ConditionLabel('Mild Current', AppTheme.seafoamGreen.withOpacity(0.8)));
-        }
-      }
-    }
+    final greenLabels = conditionLabels['green'] ?? [];
+    final yellowLabels = conditionLabels['yellow'] ?? [];
+    final redLabels = conditionLabels['red'] ?? [];
     
-    // Wind conditions (for wind sports)
-    // Use wind_wave_height as proxy for wind (as backend does - ideal 0.4-1.2m)
-    if (sport.sport == 'windsurfing' || sport.sport == 'kitesurfing') {
-      final windSpeed = context['wind_speed_kmh'] as double?;
-      final windWaveHeight = context['wind_wave_height_m'] as double?;
+    // Helper to build a label chip
+    Widget buildLabelChip(String labelText, Color color) {
+      // Determine if it's a good condition (green) or bad condition (yellow/red)
+      final isGood = color == AppTheme.seafoamGreen || 
+                     color == AppTheme.seafoamGreen.withOpacity(0.8);
       
-      // Prefer wind_speed if available, otherwise use wind_wave_height as proxy
-      if (windSpeed != null) {
-        if (windSpeed >= 25) {
-          goodConditions.add(_ConditionLabel('Strong Wind', AppTheme.seafoamGreen));
-        } else if (windSpeed >= 15) {
-          goodConditions.add(_ConditionLabel('Good Wind', AppTheme.seafoamGreen.withOpacity(0.8)));
-        } else if (windSpeed >= 10 && windSpeed < 15) {
-          // Moderate wind - OK but not great
-          if (status == 'ok' || status == 'marginal') {
-            badConditions.add(_ConditionLabel('Light Wind', AppTheme.okYellow));
-          }
-        } else if (windSpeed < 10) {
-          badConditions.add(_ConditionLabel('No Wind', AppTheme.coralAccent));
-        }
-      } else if (windWaveHeight != null) {
-        // Use wind_wave_height as proxy (backend logic: ideal 0.4-1.2m, min 0.25m)
-        if (windWaveHeight >= 0.4 && windWaveHeight <= 1.2) {
-          goodConditions.add(_ConditionLabel('Good Wind', AppTheme.seafoamGreen));
-        } else if (windWaveHeight >= 0.25 && windWaveHeight < 0.4) {
-          // Moderate wind - OK but not great (show why it's not Great)
-          if (status == 'ok' || status == 'marginal') {
-            badConditions.add(_ConditionLabel('Light Wind', AppTheme.okYellow));
-          }
-        } else if (windWaveHeight < 0.25) {
-          badConditions.add(_ConditionLabel('No Wind', AppTheme.coralAccent));
-        }
-      }
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isGood)
+              const Icon(
+                Icons.check,
+                size: 12,
+                color: AppTheme.white,
+              )
+            else
+              const Icon(
+                Icons.close,
+                size: 12,
+                color: AppTheme.white,
+              ),
+            const SizedBox(width: 4),
+            Text(
+              SportFormatters.normalizeConditionLabel(labelText),
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.white,
+                letterSpacing: 0.3,
+              ),
+            ),
+          ],
+        ),
+      );
     }
     
-    // Current for all sports (show as positive when mild)
-    final current = context['current_kmh'] as double?;
-    if (current != null && current <= 3.0) {
-      // Only add if not already handled by SUP-specific logic above
-      if (sport.sport != 'sup' && sport.sport != 'sup_surf') {
-        if (status == 'great' || status == 'ok' || status == 'marginal') {
-          goodConditions.add(_ConditionLabel('Mild Current', AppTheme.seafoamGreen.withOpacity(0.8)));
-        }
-      }
+    // Display in strict order: green → yellow → red
+    if (greenLabels.isNotEmpty) {
+      labels.add(const SizedBox(height: 8));
+      labels.add(
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: greenLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.seafoamGreen.withOpacity(0.8))).toList(),
+        ),
+      );
     }
-    
-    // Display based on status
-    if (status == 'ok' || status == 'marginal') {
-      // Show both good and bad for OK/Marginal
-      if (goodConditions.isNotEmpty) {
-        labels.add(const SizedBox(height: 8));
-        labels.add(
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: goodConditions.map<Widget>((label) => _buildLabelChip(label)).toList(),
-          ),
-        );
-      }
-      if (badConditions.isNotEmpty) {
-        labels.add(const SizedBox(height: 6));
-        labels.add(
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: badConditions.map<Widget>((label) => _buildLabelChip(label)).toList(),
-          ),
-        );
-      }
-    } else if (status == 'great') {
-      // Show only good conditions
-      if (goodConditions.isNotEmpty) {
-        labels.add(const SizedBox(height: 8));
-        labels.add(
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: goodConditions.map<Widget>((label) => _buildLabelChip(label)).toList(),
-          ),
-        );
-      }
-    } else if (status == 'bad') {
-      // Show only bad conditions
-      if (badConditions.isNotEmpty) {
-        labels.add(const SizedBox(height: 8));
-        labels.add(
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: badConditions.map<Widget>((label) => _buildLabelChip(label)).toList(),
-          ),
-        );
-      }
+    if (yellowLabels.isNotEmpty) {
+      labels.add(SizedBox(height: greenLabels.isNotEmpty ? 6 : 8));
+      labels.add(
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: yellowLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.okYellow)).toList(),
+        ),
+      );
+    }
+    if (redLabels.isNotEmpty) {
+      labels.add(SizedBox(height: (greenLabels.isNotEmpty || yellowLabels.isNotEmpty) ? 6 : 8));
+      labels.add(
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: redLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.coralAccent)).toList(),
+        ),
+      );
     }
     
     return labels;
   }
+  
 
-  Widget _buildLabelChip(_ConditionLabel label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: label.color,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label.text,
-        style: GoogleFonts.inter(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.white,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
 }
 
 class _BadSportCard extends StatelessWidget {
@@ -830,87 +605,96 @@ class _BadSportCard extends StatelessWidget {
           left: BorderSide(color: AppTheme.coralAccent.withOpacity(0.2), width: 2),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    Text(
-                      sport.sportDisplayName,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.slateGray.withOpacity(0.6), // Muted text
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppTheme.coralAccent.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'BAD',
-                        style: GoogleFonts.inter(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.coralAccent.withOpacity(0.7),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+      child: Builder(
+        builder: (context) {
+          // "Caution" section - display red condition labels
+          final redLabels = sport.conditionLabels['red'] ?? [];
           
-          // "Why is this bad?" section - use humanized reasons/flags, no duplicates
-          if (sport.reasons.isNotEmpty || sport.flags.isNotEmpty) ...[
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Text(
+                          sport.sportDisplayName,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.slateGray.withOpacity(0.6), // Muted text
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppTheme.coralAccent.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'BAD',
+                            style: GoogleFonts.inter(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.coralAccent.withOpacity(0.7),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              
+              // "Caution" section - display red condition labels
+              if (redLabels.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
-              'Why:',
+              'Caution',
               style: GoogleFonts.inter(
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                color: AppTheme.slateGray.withOpacity(0.5),
+                color: AppTheme.coralAccent,
               ),
             ),
-            const SizedBox(height: 4),
-            ...SportFormatters.getHumanizedReasons(sport.reasons, sport.flags)
-                .take(2)
-                .map((item) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 3),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '•',
-                      style: GoogleFonts.inter(
-                        fontSize: 10,
-                        color: AppTheme.coralAccent.withOpacity(0.6),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: redLabels.map<Widget>((label) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.coralAccent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.close,
+                        size: 12,
+                        color: AppTheme.white,
                       ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        item,
+                      const SizedBox(width: 4),
+                      Text(
+                        SportFormatters.normalizeConditionLabel(label),
                         style: GoogleFonts.inter(
                           fontSize: 10,
-                          color: AppTheme.slateGray.withOpacity(0.6),
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.white,
+                          letterSpacing: 0.3,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
           ],
           
           // Better alternatives
@@ -946,7 +730,9 @@ class _BadSportCard extends StatelessWidget {
               }).toList(),
             ),
           ],
-        ],
+            ],
+          );
+        },
       ),
     );
   }

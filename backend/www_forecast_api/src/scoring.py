@@ -192,6 +192,156 @@ def _pick_reasons(
     return reasons[:3]
 
 
+def _generate_condition_labels(
+    sport_key: str,
+    metrics: dict[str, float | None],
+    context: dict[str, float | None],
+    label: str,
+    flags: list[str],
+) -> dict[str, list[str]]:
+    """
+    Generate condition labels categorized by color (green, yellow, red).
+    Returns dict with keys 'green', 'yellow', 'red' and lists of snake_case label strings.
+    """
+    green_labels: list[str] = []
+    yellow_labels: list[str] = []
+    red_labels: list[str] = []
+    seen_labels: set[str] = set()
+    
+    def add_label(category: list[str], label_text: str):
+        """Add label if not duplicate (case-insensitive)"""
+        normalized = label_text.lower().strip()
+        if normalized not in seen_labels:
+            seen_labels.add(normalized)
+            category.append(label_text)
+    
+    status = label.lower()
+    wave_height = context.get("wave_height_m") or metrics.get("wave_height")
+    wave_period = context.get("wave_period_s") or metrics.get("wave_period")
+    wind_wave_height = context.get("wind_wave_height_m") or metrics.get("wind_wave_height")
+    current_kmh = context.get("current_kmh") or metrics.get("ocean_current_velocity_kmh")
+    wind_speed = metrics.get("wind_speed_kmh")
+    
+    # Wave conditions (for wave sports)
+    if sport_key in {"surfing", "sup_surf"}:
+        if wave_height is not None and wave_period is not None:
+            if wave_height >= 0.5 and wave_period >= 6:
+                add_label(green_labels, "great_waves")
+            elif wave_height >= 0.3 and wave_period >= 4:
+                add_label(green_labels, "good_waves")
+                # For OK/Marginal, show why it's not Great
+                if status in {"ok", "marginal"}:
+                    if wave_height < 0.5 or wave_period < 6:
+                        add_label(yellow_labels, "moderate_waves")
+            else:
+                # Small waves - show as negative for OK/Marginal/Bad
+                if status in {"ok", "marginal", "bad"}:
+                    add_label(yellow_labels, "small_waves")
+        
+        # Chop (wind waves)
+        if wind_wave_height is not None:
+            if wind_wave_height >= 0.5:
+                add_label(red_labels, "chop")
+            elif wind_wave_height >= 0.3:
+                add_label(yellow_labels, "chop")
+            elif wind_wave_height >= 0.15:
+                # Show moderate chop for OK/Marginal status
+                if status in {"ok", "marginal"}:
+                    add_label(yellow_labels, "chop")
+            elif wind_wave_height < 0.15 and status == "great":
+                add_label(green_labels, "low_chop")
+    
+    # SUP-specific conditions (flatwater/cruising)
+    if sport_key == "sup":
+        # Wave height
+        if wave_height is not None:
+            if wave_height >= 0.8:
+                add_label(red_labels, "too_wavy")
+            elif wave_height > 0.3 and wave_height <= 0.5:
+                # OK range - above great_max but within ok_max
+                if status in {"ok", "marginal"}:
+                    add_label(yellow_labels, "moderate_waves")
+            elif wave_height <= 0.3:
+                add_label(green_labels, "calm_surface")
+        
+        # Wind wave height (chop)
+        if wind_wave_height is not None:
+            if wind_wave_height >= 0.45:
+                add_label(red_labels, "too_choppy")
+            elif wind_wave_height > 0.15 and wind_wave_height <= 0.25:
+                # OK range
+                if status in {"ok", "marginal"}:
+                    add_label(yellow_labels, "chop")
+            elif wind_wave_height <= 0.15:
+                add_label(green_labels, "low_chop")
+        
+        # Current
+        if current_kmh is not None:
+            if current_kmh >= 5.0:
+                add_label(red_labels, "strong_current")
+            elif current_kmh >= 2.5 and current_kmh < 5.0:
+                # OK range
+                if status in {"ok", "marginal"}:
+                    add_label(yellow_labels, "current")
+            elif current_kmh < 2.5:
+                add_label(green_labels, "easy_current")
+    
+    # SUP Surf conditions
+    if sport_key == "sup_surf":
+        if current_kmh is not None:
+            if current_kmh >= 5:
+                add_label(red_labels, "strong_current")
+            elif current_kmh >= 3:
+                add_label(yellow_labels, "current")
+            elif current_kmh <= 3:
+                add_label(green_labels, "mild_current")
+    
+    # Wind conditions (for wind sports)
+    if sport_key in {"windsurfing", "kitesurfing"}:
+        if wind_speed is not None:
+            if wind_speed >= 25:
+                add_label(green_labels, "strong_wind")
+            elif wind_speed >= 15:
+                add_label(green_labels, "good_wind")
+            elif wind_speed >= 10 and wind_speed < 15:
+                # Moderate wind - OK but not great
+                if status in {"ok", "marginal"}:
+                    add_label(yellow_labels, "light_wind")
+            elif wind_speed < 10:
+                add_label(red_labels, "no_wind")
+        elif wind_wave_height is not None:
+            # Use wind_wave_height as proxy
+            if wind_wave_height >= 0.4 and wind_wave_height <= 1.2:
+                add_label(green_labels, "good_wind")
+            elif wind_wave_height >= 0.25 and wind_wave_height < 0.4:
+                # Moderate wind - OK but not great
+                if status in {"ok", "marginal"}:
+                    add_label(yellow_labels, "light_wind")
+            elif wind_wave_height < 0.25:
+                add_label(red_labels, "no_wind")
+    
+    # Current for all sports (show as positive when mild)
+    if current_kmh is not None and current_kmh <= 3.0:
+        # Only add if not already handled by sport-specific logic above
+        if sport_key not in {"sup", "sup_surf"}:
+            add_label(green_labels, "mild_current")
+    
+    # Add flags as red/yellow labels based on severity
+    if flags:
+        for flag in flags:
+            # Determine if flag should be yellow (OK issue) or red (bad issue)
+            if status == "bad":
+                add_label(red_labels, flag)
+            else:
+                add_label(yellow_labels, flag)
+    
+    return {
+        "green": green_labels,
+        "yellow": yellow_labels,
+        "red": red_labels,
+    }
+
+
 def _generate_tips(
     sport_key: str,
     metrics: dict[str, float | None],
@@ -567,6 +717,9 @@ def score_hour_for_sport(
     # Generate tips (pass full metrics so tips can access all data)
     tips = _generate_tips(sport_key, metrics, context, flags)
     
+    # Generate condition labels (categorized by color)
+    condition_labels = _generate_condition_labels(sport_key, metrics, context, label, flags)
+    
     # Debug: log if tips are empty (remove in production)
     if not tips:
         water_temp_debug = context.get("water_temp_c") or metrics.get("sea_surface_temperature")
@@ -589,6 +742,7 @@ def score_hour_for_sport(
         "flags": flags,
         "reasons": reasons,
         "tips": tips,
+        "condition_labels": condition_labels,
     }
 
 
