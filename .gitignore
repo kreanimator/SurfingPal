@@ -14,7 +14,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Only ignore lib/ in Python contexts (venv, site-packages), not Flutter lib/
+**/venv/lib/
+**/site-packages/lib/
+**/__pypackages__/lib/
 lib64/
 parts/
 sdist/
