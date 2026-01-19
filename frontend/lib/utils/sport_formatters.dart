@@ -142,4 +142,50 @@ class SportFormatters {
 
     return parts.isEmpty ? 'No data available' : parts.join(' • ');
   }
+
+  /// Humanize flag names (convert "too_wavy_for_sup" to "Too wavy for SUP")
+  static String humanizeFlag(String flag) {
+    if (flag.isEmpty) return flag;
+    
+    // If it's already human-readable (contains spaces and proper capitalization), return as-is
+    if (flag.contains(' ') && flag[0] == flag[0].toUpperCase()) {
+      return flag;
+    }
+
+    // Convert snake_case to Title Case
+    final words = flag.split('_').where((w) => w.isNotEmpty).toList();
+    if (words.isEmpty) return flag;
+
+    return words
+        .map((word) {
+          final lower = word.toLowerCase();
+          // Handle special cases
+          if (lower == 'sup') return 'SUP';
+          if (lower == 'ok') return 'OK';
+          if (lower == 'kmh' || lower == 'km/h') return 'km/h';
+          if (lower == 'm') return 'm';
+          if (lower == 'c') return 'C';
+          // Capitalize first letter
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
+  }
+
+  /// Get human-readable reasons/flags, removing duplicates
+  static List<String> getHumanizedReasons(
+    List<String> reasons,
+    List<String> flags,
+  ) {
+    // Prefer reasons (they're already humanized from backend)
+    if (reasons.isNotEmpty) {
+      return reasons.toSet().toList(); // Remove duplicates
+    }
+    
+    // Otherwise humanize flags
+    if (flags.isNotEmpty) {
+      return flags.map((f) => humanizeFlag(f)).toSet().toList(); // Remove duplicates
+    }
+    
+    return [];
+  }
 }

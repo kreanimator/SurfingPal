@@ -86,4 +86,25 @@ class ForecastHelpers {
     
     return times.join('–');
   }
+
+  /// Find better alternatives for a bad sport at the same hour
+  static List<String> findBetterAlternatives(
+    HourlyForecast hourly,
+    String currentSport,
+  ) {
+    final alternatives = <String>[];
+    
+    // Get all sports for this hour, sorted by score
+    final allSports = hourly.sports.entries.toList()
+      ..sort((a, b) => b.value.score.compareTo(a.value.score));
+    
+    for (var entry in allSports) {
+      if (entry.key == currentSport) continue;
+      if (isRecommended(entry.value.label)) {
+        alternatives.add(entry.key);
+      }
+    }
+    
+    return alternatives.take(2).toList();
+  }
 }

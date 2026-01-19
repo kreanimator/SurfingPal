@@ -100,6 +100,7 @@ class HourlyItem extends StatelessWidget {
                 SportCard(
                   sport: heroSport.value,
                   hourDate: hourly.date,
+                  hourlyForecast: hourly,
                   isHero: true,
                 ),
                 // Other sports (secondary, accordion)
@@ -108,6 +109,7 @@ class HourlyItem extends StatelessWidget {
                   child: SportCard(
                     sport: entry.value,
                     hourDate: hourly.date,
+                    hourlyForecast: hourly,
                     isHero: false,
                     isExpanded: _isExpanded(hourly.date, entry.value.sport),
                     onToggleExpanded: () => onToggleExpanded(_getExpansionKey(hourly.date, entry.value.sport)),
