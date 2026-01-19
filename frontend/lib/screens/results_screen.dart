@@ -102,115 +102,127 @@ class _ResultsScreenState extends State<ResultsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Layer 1: Decision Summary (always visible anchor)
-            DecisionSummary(
-              locationName: widget.locationName,
-              forecasts: _selectedDayForecasts,
-              selectedSports: _selectedSports,
-              onlyRecommended: _onlyRecommended,
-            ),
-            
-            // Filters (quiet, optional)
-            FiltersSection(
-              availableSports: _availableSports,
-              selectedSports: _selectedSports,
-              onlyRecommended: _onlyRecommended,
-              onSportToggled: (sport) {
-                setState(() {
-                  _selectedSports[sport] = !(_selectedSports[sport] ?? false);
-                  // Reset selection when toggling sports
-                  _selectedHour = null;
-                  _selectedSport = null;
-                });
-              },
-              onOnlyRecommendedChanged: (value) {
-                setState(() {
-                  _onlyRecommended = value;
-                  _selectedHour = null;
-                  _selectedSport = null;
-                });
-              },
-            ),
-            
-            // Best times by sport (clickable, adapts to multi-sport mode)
-            if (_selectedSports.values.where((v) => v == true).length > 1)
-              BestWindowStrip(
-                availableSports: _availableSports,
-                selectedSports: _selectedSports,
-                bestHoursBySport: _bestHoursBySport,
-                onSportWindowTap: (sportHourKey) {
-                  // Format: "sport|hourDate"
-                  final parts = sportHourKey.split('|');
-                  if (parts.length == 2) {
-                    setState(() {
-                      _selectedSport = parts[0];
-                      _selectedHour = parts[1];
-                    });
-                  }
-                },
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth > 768;
+          final maxWidth = isDesktop ? 1200.0 : constraints.maxWidth;
+          
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Layer 1: Decision Summary (always visible anchor)
+                    DecisionSummary(
+                      locationName: widget.locationName,
+                      forecasts: _selectedDayForecasts,
+                      selectedSports: _selectedSports,
+                      onlyRecommended: _onlyRecommended,
+                    ),
+                    
+                    // Filters (quiet, optional)
+                    FiltersSection(
+                      availableSports: _availableSports,
+                      selectedSports: _selectedSports,
+                      onlyRecommended: _onlyRecommended,
+                      onSportToggled: (sport) {
+                        setState(() {
+                          _selectedSports[sport] = !(_selectedSports[sport] ?? false);
+                          // Reset selection when toggling sports
+                          _selectedHour = null;
+                          _selectedSport = null;
+                        });
+                      },
+                      onOnlyRecommendedChanged: (value) {
+                        setState(() {
+                          _onlyRecommended = value;
+                          _selectedHour = null;
+                          _selectedSport = null;
+                        });
+                      },
+                    ),
+                    
+                    // Best times by sport (clickable, adapts to multi-sport mode)
+                    if (_selectedSports.values.where((v) => v == true).length > 1)
+                      BestWindowStrip(
+                        availableSports: _availableSports,
+                        selectedSports: _selectedSports,
+                        bestHoursBySport: _bestHoursBySport,
+                        onSportWindowTap: (sportHourKey) {
+                          // Format: "sport|hourDate"
+                          final parts = sportHourKey.split('|');
+                          if (parts.length == 2) {
+                            setState(() {
+                              _selectedSport = parts[0];
+                              _selectedHour = parts[1];
+                            });
+                          }
+                        },
+                      ),
+                    
+                    // Day selector (subtle navigation)
+                    if (_forecastsByDay.length > 1)
+                      DaySelector(
+                        forecastsByDay: _forecastsByDay,
+                        selectedIndex: _selectedDayIndex,
+                        onDaySelected: (index) {
+                          setState(() {
+                            _selectedDayIndex = index;
+                            _selectedHour = null; // Reset selected hour when changing days
+                            _selectedSport = null;
+                          });
+                        },
+                      ),
+                    
+                    // Layer 2: Timeline strip (horizontal scrollable)
+                    TimelineStrip(
+                      forecasts: _selectedDayForecasts,
+                      selectedSports: _selectedSports,
+                      onlyRecommended: _onlyRecommended,
+                      selectedHour: _selectedHour,
+                      selectedSport: _selectedSport,
+                      onHourSelected: (hourDate) {
+                        setState(() {
+                          _selectedHour = _selectedHour == hourDate ? null : hourDate;
+                          _selectedSport = null; // Clear sport selection in single-sport mode
+                        });
+                      },
+                      onSportHourSelected: (sportHourKey) {
+                        // Format: "sport|hourDate"
+                        final parts = sportHourKey.split('|');
+                        if (parts.length == 2) {
+                          setState(() {
+                            _selectedSport = parts[0];
+                            _selectedHour = parts[1];
+                          });
+                        }
+                      },
+                      onSportNameTapped: (sport) {
+                        // Filter to this sport (enter single-sport mode)
+                        setState(() {
+                          // Deselect all other sports
+                          for (var key in _selectedSports.keys) {
+                            _selectedSports[key] = key == sport;
+                          }
+                          _selectedHour = null;
+                          _selectedSport = null;
+                        });
+                      },
+                    ),
+                    
+                    // Layer 3: Expandable sport details
+                    _buildExpandedDetails(),
+                    
+                    // Bottom padding to prevent overflow
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
-            
-            // Day selector (subtle navigation)
-            if (_forecastsByDay.length > 1)
-              DaySelector(
-                forecastsByDay: _forecastsByDay,
-                selectedIndex: _selectedDayIndex,
-                onDaySelected: (index) {
-                  setState(() {
-                    _selectedDayIndex = index;
-                    _selectedHour = null; // Reset selected hour when changing days
-                    _selectedSport = null;
-                  });
-                },
-              ),
-            
-            // Layer 2: Timeline strip (horizontal scrollable)
-            TimelineStrip(
-              forecasts: _selectedDayForecasts,
-              selectedSports: _selectedSports,
-              onlyRecommended: _onlyRecommended,
-              selectedHour: _selectedHour,
-              selectedSport: _selectedSport,
-              onHourSelected: (hourDate) {
-                setState(() {
-                  _selectedHour = _selectedHour == hourDate ? null : hourDate;
-                  _selectedSport = null; // Clear sport selection in single-sport mode
-                });
-              },
-              onSportHourSelected: (sportHourKey) {
-                // Format: "sport|hourDate"
-                final parts = sportHourKey.split('|');
-                if (parts.length == 2) {
-                  setState(() {
-                    _selectedSport = parts[0];
-                    _selectedHour = parts[1];
-                  });
-                }
-              },
-              onSportNameTapped: (sport) {
-                // Filter to this sport (enter single-sport mode)
-                setState(() {
-                  // Deselect all other sports
-                  for (var key in _selectedSports.keys) {
-                    _selectedSports[key] = key == sport;
-                  }
-                  _selectedHour = null;
-                  _selectedSport = null;
-                });
-              },
             ),
-            
-            // Layer 3: Expandable sport details
-            _buildExpandedDetails(),
-            
-            // Bottom padding to prevent overflow
-            const SizedBox(height: 24),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

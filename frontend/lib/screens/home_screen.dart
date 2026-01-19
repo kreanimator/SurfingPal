@@ -261,121 +261,131 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           
           // Content
           SafeArea(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo icon with subtle breathing animation
-                    AnimatedBuilder(
-                      animation: _logoAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _logoAnimation.value,
-                          child: Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth > 768;
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: isDesktop ? 600.0 : constraints.maxWidth,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Logo icon with subtle breathing animation
+                          AnimatedBuilder(
+                            animation: _logoAnimation,
+                            builder: (context, child) {
+                              return Transform.scale(
+                                scale: _logoAnimation.value,
+                                child: Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.oceanDeep,
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppTheme.oceanDeep.withOpacity(0.3),
+                                        blurRadius: 20,
+                                        spreadRadius: 5,
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Icon(
+                                    Icons.waves,
+                                    size: 50,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 40),
+                          
+                          // Title with curvy surf font (Pacifico)
+                          Text(
+                            'SurfingPal',
+                            style: GoogleFonts.pacifico(
+                              fontSize: 48,
                               color: AppTheme.oceanDeep,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.oceanDeep.withOpacity(0.3),
-                                  blurRadius: 20,
-                                  spreadRadius: 5,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.white.withOpacity(0.8),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
-                            child: const Icon(
-                              Icons.waves,
-                              size: 50,
-                              color: Colors.white,
-                            ),
                           ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 40),
-                    
-                    // Title with curvy surf font (Pacifico)
-                    Text(
-                      'SurfingPal',
-                      style: GoogleFonts.pacifico(
-                        fontSize: 48,
-                        color: AppTheme.oceanDeep,
-                        shadows: [
-                          Shadow(
-                            color: Colors.white.withOpacity(0.8),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Subtitle with calm font (Inter)
-                    Text(
-                      'What\'s the surf like?',
-                      style: GoogleFonts.inter(
-                        fontSize: 20,
-                        color: AppTheme.oceanDeep.withOpacity(0.9),
-                        fontWeight: FontWeight.w300,
-                        shadows: [
-                          Shadow(
-                            color: Colors.white.withOpacity(0.8),
-                            blurRadius: 8,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 60),
-                    
-                    // Single strong CTA with wave-like hover effect
-                    SizedBox(
-                      width: double.infinity,
-                      child: _isLoading
-                          ? Center(
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.oceanDeep),
-                              ),
-                            )
-                          : _WaveButton(
-                              onPressed: _fetchForecast,
-                              child: Text(
-                                'Check Conditions',
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.5,
+                          const SizedBox(height: 16),
+                          
+                          // Subtitle with calm font (Inter)
+                          Text(
+                            'What\'s the surf like?',
+                            style: GoogleFonts.inter(
+                              fontSize: 20,
+                              color: AppTheme.oceanDeep.withOpacity(0.9),
+                              fontWeight: FontWeight.w300,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.white.withOpacity(0.8),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 1),
                                 ),
-                              ),
+                              ],
                             ),
-                    ),
-                    const SizedBox(height: 40),
-                    
-                    // Small helper text
-                    Text(
-                      'Real-time surf, SUP, wind & kite recommendations',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: AppTheme.oceanDeep.withOpacity(0.7),
-                        fontWeight: FontWeight.w300,
-                        shadows: [
-                          Shadow(
-                            color: Colors.white.withOpacity(0.8),
-                            blurRadius: 6,
-                            offset: const Offset(0, 1),
+                          ),
+                          const SizedBox(height: 60),
+                          
+                          // Single strong CTA with wave-like hover effect
+                          _isLoading
+                              ? Center(
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.oceanDeep),
+                                  ),
+                                )
+                              : SizedBox(
+                                  width: double.infinity,
+                                  child: _WaveButton(
+                                    onPressed: _fetchForecast,
+                                    child: Text(
+                                      'Check Conditions',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                          const SizedBox(height: 40),
+                          
+                          // Small helper text
+                          Text(
+                            'Real-time surf, SUP, wind & kite recommendations',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: AppTheme.oceanDeep.withOpacity(0.7),
+                              fontWeight: FontWeight.w300,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.white.withOpacity(0.8),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              },
             ),
           ),
         ],
