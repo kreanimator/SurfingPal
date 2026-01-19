@@ -70,10 +70,21 @@ async def get_forecast(request: ForecastRequest):
         latitude = request.latitude if request.latitude is not None else forecast_api.app_config["test_geo"]["latitude"]
         longitude = request.longitude if request.longitude is not None else forecast_api.app_config["test_geo"]["longitude"]
         
-        # Get forecast
-        forecast = forecast_api.get_forecast(latitude=latitude, longitude=longitude)
-        df = forecast_api.parse_api_response(forecast)
-        hourly = forecast_api.to_hourly_json(df)
+        # Get marine forecast
+        marine_forecast = forecast_api.get_forecast(latitude=latitude, longitude=longitude)
+        marine_df = forecast_api.parse_api_response(marine_forecast)
+        
+        # Get weather forecast (UV index)
+        try:
+            weather_forecast = forecast_api.get_weather_forecast(latitude=latitude, longitude=longitude)
+            weather_df = forecast_api.parse_weather_response(weather_forecast)
+            # Merge UV index into marine data
+            marine_df = forecast_api.merge_weather_data(marine_df, weather_df)
+        except Exception as e:
+            # If weather API fails, continue without UV index
+            print(f"Warning: Could not fetch UV index: {e}")
+        
+        hourly = forecast_api.to_hourly_json(marine_df)
         scores = score_forecast(hourly, rules=forecast_api.CONDITION_RULESET)
         
         # Build response
@@ -81,12 +92,12 @@ async def get_forecast(request: ForecastRequest):
             "meta": {
                 "source": "open-meteo marine weather api",
                 "coordinates": {
-                    "latitude": forecast.Latitude(),
-                    "longitude": forecast.Longitude(),
-                    "pretty": f'{forecast.Latitude()}°N {forecast.Longitude()}°E',
+                    "latitude": marine_forecast.Latitude(),
+                    "longitude": marine_forecast.Longitude(),
+                    "pretty": f'{marine_forecast.Latitude()}°N {marine_forecast.Longitude()}°E',
                 },
-                "elevation_m_asl": forecast.Elevation(),
-                "utc_offset_seconds": forecast.UtcOffsetSeconds(),
+                "elevation_m_asl": marine_forecast.Elevation(),
+                "utc_offset_seconds": marine_forecast.UtcOffsetSeconds(),
             },
             "scores": scores,
         }

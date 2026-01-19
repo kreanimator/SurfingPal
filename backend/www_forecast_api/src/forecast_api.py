@@ -95,6 +95,7 @@ class ForecastAPI:
                     "wave_height",
                     "wave_period",
                     "ocean_current_velocity",
+                    "uv_index",
                 ],
                 "ux": {
                     "chips": [
@@ -138,6 +139,7 @@ class ForecastAPI:
                     "wave_height",
                     "wind_wave_height",
                     "ocean_current_velocity",
+                    "uv_index",
                 ],
                 "ux": {
                     "primary_message": "Calmer is better for SUP. Small chop quickly becomes tiring.",
@@ -174,6 +176,7 @@ class ForecastAPI:
                     "wave_period",
                     "wind_wave_height",
                     "ocean_current_velocity",
+                    "uv_index",
                 ],
             },
 
@@ -210,6 +213,7 @@ class ForecastAPI:
                     "wave_period",
                     "wind_wave_height",
                     "ocean_current_velocity",
+                    "uv_index",
                 ],
                 "ux": {
                     "primary_message": "This uses wind-waves as a wind proxy. Add wind_speed_10m for reliable windsurf calls.",
@@ -244,6 +248,7 @@ class ForecastAPI:
                     "wave_height",
                     "wind_wave_height",
                     "ocean_current_velocity",
+                    "uv_index",
                 ],
                 "ux": {
                     "primary_message": "Proxy-based. For kite, wind strength & gusts matter most — combine with Weather API wind.",
@@ -260,20 +265,33 @@ class ForecastAPI:
     def __call__(self, event: dict, *args, **kwargs):
         latitude = event.get('latitude',self.app_config["test_geo"]["latitude"])
         longitude = event.get('longitude',self.app_config["test_geo"]["longitude"])
-        forecast = self.get_forecast(latitude=latitude, longitude=longitude)
-        df = self.parse_api_response(forecast)
+        
+        # Get marine forecast
+        marine_forecast = self.get_forecast(latitude=latitude, longitude=longitude)
+        df = self.parse_api_response(marine_forecast)
+        
+        # Get weather forecast (UV index)
+        try:
+            weather_forecast = self.get_weather_forecast(latitude=latitude, longitude=longitude)
+            weather_df = self.parse_weather_response(weather_forecast)
+            # Merge UV index into marine data
+            df = self.merge_weather_data(df, weather_df)
+        except Exception as e:
+            # If weather API fails, continue without UV index
+            print(f"Warning: Could not fetch UV index: {e}")
+        
         hourly = self.to_hourly_json(df)
         scores = score_forecast(hourly, rules=self.CONDITION_RULESET)
         payload = {
             "meta": {
                 "source": "open-meteo marine weather api",
                 "coordinates": {
-                    "latitude": forecast.Latitude(),
-                    "longitude": forecast.Longitude(),
-                    "pretty": f'{forecast.Latitude()}°N {forecast.Longitude()}°E',
+                    "latitude": marine_forecast.Latitude(),
+                    "longitude": marine_forecast.Longitude(),
+                    "pretty": f'{marine_forecast.Latitude()}°N {marine_forecast.Longitude()}°E',
                 },
-                "elevation_m_asl": forecast.Elevation(),
-                "utc_offset_seconds": forecast.UtcOffsetSeconds(),
+                "elevation_m_asl": marine_forecast.Elevation(),
+                "utc_offset_seconds": marine_forecast.UtcOffsetSeconds(),
             },
             # "hourly": hourly,  # raw hourly (charts/debug)
             "scores": scores,  # UX-ready scoring output
@@ -292,6 +310,36 @@ class ForecastAPI:
             }
             )
         return response[0]
+    
+    def get_weather_forecast(self, *, latitude: float, longitude: float) -> WeatherApiResponse:
+        """Fetch UV index and other weather data from Open-Meteo Weather API"""
+        weather_api_url = 'https://api.open-meteo.com/v1/forecast'
+        response = self.client.weather_api(
+            weather_api_url,
+            params={
+                'latitude': latitude,
+                'longitude': longitude,
+                'hourly': ['uv_index']  # UV index for tips
+            }
+        )
+        return response[0]
+    
+    def parse_weather_response(self, response: WeatherApiResponse) -> pd.DataFrame:
+        """Parse weather API response to extract UV index"""
+        hourly = response.Hourly()
+        dates = pd.date_range(
+            start=pd.to_datetime(hourly.Time(), unit='s', utc=True),
+            end=pd.to_datetime(hourly.TimeEnd(), unit='s', utc=True),
+            freq=pd.Timedelta(seconds=hourly.Interval()),
+            inclusive='left'
+        )
+        data: dict[str, object] = {'date': dates}
+        
+        # Extract UV index - since we only request uv_index, it's at index 0
+        if hourly.VariablesLength() > 0:
+            data['uv_index'] = hourly.Variables(0).ValuesAsNumpy()
+        
+        return pd.DataFrame(data)
 
     def parse_api_response(self, response: WeatherApiResponse) -> pd.DataFrame:
         hourly = response.Hourly()
@@ -312,6 +360,21 @@ class ForecastAPI:
         out = df.copy()
         out["date"] = out["date"].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
         return out.to_dict(orient="records")
+    
+    def merge_weather_data(self, marine_df: pd.DataFrame, weather_df: pd.DataFrame) -> pd.DataFrame:
+        """Merge UV index from weather API into marine forecast DataFrame"""
+        # Merge on date - only merge uv_index column
+        uv_cols = ['date']
+        if 'uv_index' in weather_df.columns:
+            uv_cols.append('uv_index')
+        
+        merged = marine_df.merge(
+            weather_df[uv_cols],
+            on='date',
+            how='left'
+        )
+        
+        return merged
 
 if __name__ == "__main__":
     api = ForecastAPI()

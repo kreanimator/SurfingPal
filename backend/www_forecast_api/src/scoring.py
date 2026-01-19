@@ -192,6 +192,129 @@ def _pick_reasons(
     return reasons[:3]
 
 
+def _generate_tips(
+    sport_key: str,
+    metrics: dict[str, float | None],
+    context: dict[str, float | None],
+    flags: list[str],
+) -> list[dict[str, str]]:
+    """
+    Generate contextual tips based on conditions.
+    Returns 0-3 tips max, only when they matter.
+    """
+    tips: list[dict[str, str]] = []
+    
+    # Water temperature → wetsuit recommendation
+    # Check both context and metrics (context might be filtered)
+    water_temp = context.get("water_temp_c")
+    if water_temp is None:
+        water_temp = metrics.get("sea_surface_temperature")
+    
+    # Validate water_temp is a valid number
+    if water_temp is not None:
+        try:
+            water_temp_float = float(water_temp)
+            if math.isnan(water_temp_float) or math.isinf(water_temp_float):
+                water_temp = None
+            else:
+                water_temp = water_temp_float
+        except (ValueError, TypeError):
+            water_temp = None
+    
+    if water_temp is not None:
+        if water_temp >= 24:
+            tips.append({
+                "id": "wetsuit_warm",
+                "severity": "info",
+                "icon": "wetsuit",
+                "text": f"Water {water_temp:.0f}°C → rashguard / trunks",
+            })
+        elif water_temp >= 21:
+            tips.append({
+                "id": "wetsuit_spring",
+                "severity": "info",
+                "icon": "wetsuit",
+                "text": f"Water {water_temp:.0f}°C → spring suit / 2mm top",
+            })
+        elif water_temp >= 18:
+            tips.append({
+                "id": "wetsuit_3_2",
+                "severity": "info",
+                "icon": "wetsuit",
+                "text": f"Water {water_temp:.0f}°C → 3/2mm recommended",
+            })
+        elif water_temp >= 16:
+            tips.append({
+                "id": "wetsuit_4_3",
+                "severity": "info",
+                "icon": "wetsuit",
+                "text": f"Water {water_temp:.0f}°C → 4/3mm recommended",
+            })
+        elif water_temp >= 13:
+            tips.append({
+                "id": "wetsuit_5_4",
+                "severity": "info",
+                "icon": "wetsuit",
+                "text": f"Water {water_temp:.0f}°C → 5/4mm + boots",
+            })
+        else:
+            tips.append({
+                "id": "wetsuit_6_5",
+                "severity": "info",
+                "icon": "wetsuit",
+                "text": f"Water {water_temp:.0f}°C → 6/5mm + hood",
+            })
+    
+    # UV index (if available in metrics)
+    uv_index = metrics.get("uv_index")
+    if uv_index is not None:
+        if uv_index >= 8:
+            tips.append({
+                "id": "uv_high",
+                "severity": "warn",
+                "icon": "sun",
+                "text": "UV high → sunscreen + shade plan",
+            })
+        elif uv_index >= 6:
+            tips.append({
+                "id": "uv_moderate",
+                "severity": "info",
+                "icon": "sun",
+                "text": "UV moderate-high → sunscreen recommended",
+            })
+    
+    # Current warnings
+    current_kmh = context.get("current_kmh") or metrics.get("ocean_current_velocity_kmh")
+    if current_kmh is not None:
+        if current_kmh >= 6:
+            tips.append({
+                "id": "current_strong",
+                "severity": "warn",
+                "icon": "warning",
+                "text": f"Strong current ({current_kmh:.1f} km/h) → avoid solo / stay near shore",
+            })
+        elif current_kmh >= 4:
+            tips.append({
+                "id": "current_moderate",
+                "severity": "warn",
+                "icon": "warning",
+                "text": f"Current {current_kmh:.1f} km/h → stay close to shore",
+            })
+    
+    # Wind wave / chop warnings
+    wind_wave_h = context.get("wind_wave_height_m") or metrics.get("wind_wave_height")
+    if wind_wave_h is not None and wind_wave_h > 0.3:
+        tips.append({
+            "id": "chop_warning",
+            "severity": "info",
+            "icon": "waves",
+            "text": "Choppy conditions → larger board / beginner warning",
+        })
+    
+    # Keep max 3 tips
+    return tips[:3]
+
+
 def score_hour_for_sport(
     hour: dict[str, Any],
     *,
@@ -438,6 +561,24 @@ def score_hour_for_sport(
             context["wind_wave_height_m"] = metrics.get("wind_wave_height")
         elif field == "ocean_current_velocity":
             context["current_kmh"] = metrics.get("ocean_current_velocity_kmh")
+        elif field == "uv_index":
+            context["uv_index"] = metrics.get("uv_index")
+
+    # Generate tips (pass full metrics so tips can access all data)
+    tips = _generate_tips(sport_key, metrics, context, flags)
+    
+    # Debug: log if tips are empty (remove in production)
+    if not tips:
+        water_temp_debug = context.get("water_temp_c") or metrics.get("sea_surface_temperature")
+        uv_debug = context.get("uv_index") or metrics.get("uv_index")
+        current_debug = context.get("current_kmh") or metrics.get("ocean_current_velocity_kmh")
+        print(f"DEBUG: No tips for {sport_key} at {hour.get('date', 'unknown')}")
+        print(f"  - water_temp: {water_temp_debug}")
+        print(f"  - uv_index: {uv_debug}")
+        print(f"  - current: {current_debug}")
+        print(f"  - context keys: {list(context.keys())}")
+        print(f"  - metrics has sea_surface_temperature: {'sea_surface_temperature' in metrics}")
+        print(f"  - metrics has uv_index: {'uv_index' in metrics}")
 
     return {
         "sport": sport_key,
@@ -447,6 +588,7 @@ def score_hour_for_sport(
         "context": {k: round(v, 2) if v is not None else None for k, v in context.items() if v is not None},
         "flags": flags,
         "reasons": reasons,
+        "tips": tips,
     }
 
 
