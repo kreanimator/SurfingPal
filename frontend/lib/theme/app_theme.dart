@@ -2,18 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Surf vibe minimal palette (max 5 tokens)
-  static const Color oceanBlue = Color(0xFF0A7CFF); // Primary - buttons, links
-  static const Color seafoamGreen = Color(0xFF26A69A); // Success - great conditions
-  static const Color sand = Color(0xFFF5F1E8); // Background - off-white
-  static const Color coral = Color(0xFFFF8A80); // Warning/bad - unsafe conditions
-  static const Color slateGray = Color(0xFF475569); // Text - readable gray
+  // Surf vibe minimal palette (updated)
+  static const Color oceanDeep = Color(0xFF0D3B66); // Ocean Deep - titles
+  static const Color seafoamGreen = Color(0xFF42C2A1); // Seafoam - accents, success
+  static const Color sand = Color(0xFFF4ECD8); // Sand - overlays, backgrounds
+  static const Color lightSky = Color(0xFFA9E3F4); // Light Sky - subtle accents
+  static const Color coralAccent = Color(0xFFFF6B6B); // Coral - CTAs, warnings
   
   // Legacy aliases for compatibility
-  static const Color ocean = oceanBlue;
-  static const Color primaryBlue = oceanBlue;
+  static const Color oceanBlue = oceanDeep;
+  static const Color coral = coralAccent;
+  static const Color slateGray = Color(0xFF475569); // Text - readable gray
+  static const Color primaryBlue = oceanDeep;
   static const Color turquoise = seafoamGreen;
   static const Color sandBeige = sand;
+  static const Color ocean = oceanDeep;
   static const Color darkBlue = Color(0xFF1E293B);
   static const Color white = Color(0xFFFFFFFF);
   static const Color lightGray = Color(0xFFF8F9FA);
@@ -29,43 +32,39 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryBlue,
-        primary: primaryBlue,
-        secondary: turquoise,
+        seedColor: oceanDeep,
+        primary: oceanDeep,
+        secondary: seafoamGreen,
         surface: white,
-        background: lightGray,
+        background: sand,
       ),
-      scaffoldBackgroundColor: lightGray,
-      appBarTheme: AppBarTheme(
+      scaffoldBackgroundColor: sand,
+        appBarTheme: AppBarTheme(
         backgroundColor: white,
         elevation: 0,
         centerTitle: true,
-        titleTextStyle: GoogleFonts.poppins(
+        titleTextStyle: GoogleFonts.pacifico(
           fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: darkBlue,
-          letterSpacing: 1.2,
+          color: oceanDeep,
         ),
-        iconTheme: const IconThemeData(color: darkBlue),
+        iconTheme: const IconThemeData(color: oceanDeep),
       ),
-      textTheme: GoogleFonts.poppinsTextTheme().copyWith(
-        displayLarge: GoogleFonts.poppins(
+      textTheme: GoogleFonts.interTextTheme().copyWith(
+        displayLarge: GoogleFonts.pacifico(
           fontSize: 32,
-          fontWeight: FontWeight.bold,
-          color: darkBlue,
+          color: oceanDeep,
         ),
-        displayMedium: GoogleFonts.poppins(
+        displayMedium: GoogleFonts.pacifico(
           fontSize: 24,
-          fontWeight: FontWeight.w600,
-          color: darkBlue,
+          color: oceanDeep,
         ),
-        bodyLarge: GoogleFonts.poppins(
+        bodyLarge: GoogleFonts.inter(
           fontSize: 16,
-          color: darkGray,
+          color: slateGray,
         ),
-        bodyMedium: GoogleFonts.poppins(
+        bodyMedium: GoogleFonts.inter(
           fontSize: 14,
-          color: darkGray,
+          color: slateGray,
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -77,7 +76,7 @@ class AppTheme {
             borderRadius: BorderRadius.circular(30),
           ),
           elevation: 4,
-          textStyle: GoogleFonts.poppins(
+          textStyle: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.2,
