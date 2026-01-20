@@ -2,13 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // For web: use localhost
-  // For mobile: use your computer's IP address (e.g., 'http://192.168.1.100:8000')
-  // For production: use your deployed backend URL
-  static const String baseUrl = 'http://localhost:8000';
-  
-  // Uncomment and set for mobile development:
-  // static const String baseUrl = 'http://YOUR_COMPUTER_IP:8000';
+  // Production API endpoint
+  static const String baseUrl = 'https://8amfpicl1f.execute-api.us-west-2.amazonaws.com/default';
   
   Future<Map<String, dynamic>> getForecast({
     double? latitude,

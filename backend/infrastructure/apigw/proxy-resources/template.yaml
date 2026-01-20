@@ -33,13 +33,6 @@ Resources:
       RouteKey: "POST /api/forecast"
       Target: !Sub "integrations/${ForecastApiIntegration}"
 
-  DefaultRoute:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !ImportValue surfingpal-api-id
-      RouteKey: "$default"
-      Target: !Sub "integrations/${ForecastApiIntegration}"
-
   ForecastApiFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:

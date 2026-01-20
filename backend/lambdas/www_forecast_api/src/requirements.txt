@@ -1,3 +1,4 @@
 openmeteo-requests
 requests-cache
 retry-requests
+aws-xray-sdk
