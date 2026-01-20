@@ -33,13 +33,6 @@ Resources:
       RouteKey: "POST /api/forecast"
       Target: !Sub "integrations/${ForecastApiIntegration}"
 
-  OptionsRoute:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !ImportValue surfingpal-api-id
-      RouteKey: "OPTIONS /{proxy+}"
-      Target: !Sub "integrations/${ForecastApiIntegration}"
-
   ProxyRoute:
     Type: AWS::ApiGatewayV2::Route
     Properties:

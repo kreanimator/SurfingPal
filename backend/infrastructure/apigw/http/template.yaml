@@ -25,7 +25,9 @@ Resources:
           - 'x-amz-date'
           - 'authorization'
           - 'x-api-key'
+          - 'x-amz-security-token'
         MaxAge: 300
+        AllowCredentials: false
 
   HttpApiStage:
     Type: AWS::ApiGatewayV2::Stage
@@ -33,25 +35,6 @@ Resources:
       ApiId: !Ref HttpApi
       StageName: default
       AutoDeploy: true
-      AccessLogSettings:
-        DestinationArn: !GetAtt ApiGatewayLogGroup.Arn
-        Format: |
-          {
-            "requestId": "$context.requestId",
-            "ip": "$context.identity.sourceIp",
-            "requestTime": "$context.requestTime",
-            "httpMethod": "$context.httpMethod",
-            "routeKey": "$context.routeKey",
-            "status": "$context.status",
-            "protocol": "$context.protocol",
-            "responseLength": "$context.responseLength"
-          }
-
-  ApiGatewayLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: !Sub "/aws/apigateway/${ApiName}"
-      RetentionInDays: 7
 
 Outputs:
   ApiEndpoint:

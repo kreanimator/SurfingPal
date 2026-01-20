@@ -23,22 +23,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     - POST /api/forecast -> Get forecast
     """
     route_key = event.get('routeKey', '')
-    http_method = event.get('requestContext', {}).get('http', {}).get('method', '')
     path = event.get('rawPath', '')
     
-    # Handle CORS preflight
-    if http_method == 'OPTIONS':
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'content-type',
-            },
-            'body': ''
-        }
-    
-    # Route handling
+    # Route handling (CORS is handled automatically by API Gateway)
     if route_key == 'GET /' or path == '/':
         return handle_root()
     elif route_key == 'GET /health' or path == '/health':

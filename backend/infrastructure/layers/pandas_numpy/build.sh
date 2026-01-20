@@ -20,8 +20,15 @@ mkdir -p "${LAYER_DIR}/python"
 echo "Created layer directory structure"
 
 # Install pandas and numpy to the layer directory
-echo "Installing pandas and numpy..."
-pip install pandas numpy -t "${LAYER_DIR}/python" --no-cache-dir
+# Pin numpy to 2.0.x to avoid conflicts with local environment packages
+echo "Installing numpy (pinned to 2.0.2)..."
+pip install "numpy==2.0.2" -t "${LAYER_DIR}/python" --no-cache-dir --upgrade --force-reinstall
+
+echo "Installing pandas (with numpy constraint)..."
+# Use --no-deps to prevent pandas from upgrading numpy, then install pandas deps manually
+pip install "pandas>=2.0.0,<2.4.0" -t "${LAYER_DIR}/python" --no-cache-dir --upgrade --no-deps
+# Install pandas dependencies manually (excluding numpy which is already installed)
+pip install "python-dateutil>=2.8.2" "pytz>=2020.1" "tzdata>=2022.7" "six>=1.5" -t "${LAYER_DIR}/python" --no-cache-dir
 
 # Remove unnecessary files to reduce size
 echo "Removing unnecessary files..."
