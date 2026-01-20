@@ -4,6 +4,7 @@ import '../models/forecast_data.dart';
 import '../theme/app_theme.dart';
 import '../utils/sport_formatters.dart';
 import '../utils/forecast_helpers.dart';
+import 'sport_card_helpers.dart';
 
 class SportCard extends StatelessWidget {
   final SportForecast sport;
@@ -87,36 +88,9 @@ class _HeroSportCard extends StatelessWidget {
                       color: AppTheme.slateGray,
                     ),
               ),
-              // Show label first, number only in expanded view
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      sport.label.toUpperCase(),
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: statusColor,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
+              StatusBadge(
+                label: sport.label,
+                statusColor: statusColor,
               ),
             ],
           ),
@@ -129,155 +103,13 @@ class _HeroSportCard extends StatelessWidget {
             ),
           ),
           // Condition labels only - displayed in order: green → yellow → red
-          ..._buildConditionLabels(sport),
+          ...ConditionLabelsBuilder.build(sport),
           
           // Tips: max 2-3, categorize silently (no label)
-          if (sport.tips.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ...sport.tips.take(3).map((tip) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _getTipIcon(tip.icon),
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        tip.text,
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: AppTheme.slateGray.withOpacity(0.7),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-            if (sport.tips.length > 3) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Show more tips',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  color: AppTheme.oceanDeep.withOpacity(0.6),
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-          ],
+          ...TipsBuilder.build(sport.tips),
         ],
       ),
     );
-  }
-
-  String _getTipIcon(String icon) {
-    switch (icon) {
-      case 'wetsuit':
-        return '🧥';
-      case 'sun':
-        return '☀️';
-      case 'warning':
-        return '⚠️';
-      case 'waves':
-        return '🌊';
-      default:
-        return 'ℹ️';
-    }
-  }
-
-  List<Widget> _buildConditionLabels(SportForecast sport) {
-    final labels = <Widget>[];
-    
-    // Use condition labels from backend if available
-    final conditionLabels = sport.conditionLabels;
-    if (conditionLabels.isEmpty) {
-      return labels; // No labels to display
-    }
-    
-    final greenLabels = conditionLabels['green'] ?? [];
-    final yellowLabels = conditionLabels['yellow'] ?? [];
-    final redLabels = conditionLabels['red'] ?? [];
-    
-    // Helper to build a label chip
-    Widget buildLabelChip(String labelText, Color color) {
-      // Determine if it's a good condition (green) or bad condition (yellow/red)
-      final isGood = color == AppTheme.seafoamGreen || 
-                     color == AppTheme.seafoamGreen.withOpacity(0.8);
-      
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isGood)
-              const Icon(
-                Icons.check,
-                size: 12,
-                color: AppTheme.white,
-              )
-            else
-              const Icon(
-                Icons.close,
-                size: 12,
-                color: AppTheme.white,
-              ),
-            const SizedBox(width: 4),
-            Text(
-              SportFormatters.normalizeConditionLabel(labelText),
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.white,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    
-    // Display in strict order: green → yellow → red
-    if (greenLabels.isNotEmpty) {
-      labels.add(const SizedBox(height: 8));
-      labels.add(
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: greenLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.seafoamGreen.withOpacity(0.8))).toList(),
-        ),
-      );
-    }
-    if (yellowLabels.isNotEmpty) {
-      labels.add(SizedBox(height: greenLabels.isNotEmpty ? 6 : 8));
-      labels.add(
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: yellowLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.okYellow)).toList(),
-        ),
-      );
-    }
-    if (redLabels.isNotEmpty) {
-      labels.add(SizedBox(height: (greenLabels.isNotEmpty || yellowLabels.isNotEmpty) ? 6 : 8));
-      labels.add(
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: redLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.coralAccent)).toList(),
-        ),
-      );
-    }
-    
-    return labels;
   }
 }
 
@@ -364,35 +196,12 @@ class _AccordionSportCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         // Label pill (show label first)
-                        Container(
+                        StatusBadge(
+                          label: sport.label,
+                          statusColor: statusColor,
+                          dotSize: 4,
+                          fontSize: 9,
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: statusColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                sport.label.toUpperCase(),
-                                style: GoogleFonts.inter(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                  color: statusColor,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                            ],
-                          ),
                         ),
                       ],
                     ),
@@ -421,46 +230,9 @@ class _AccordionSportCard extends StatelessWidget {
                     ),
                   ),
                   // Condition labels only - displayed in order: green → yellow → red
-                  ..._buildConditionLabels(sport),
+                  ...ConditionLabelsBuilder.build(sport),
                   // Tips: max 2-3, categorize silently
-                  if (sport.tips.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    ...sport.tips.take(3).map((tip) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _getTipIcon(tip.icon),
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                tip.text,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  color: AppTheme.slateGray.withOpacity(0.7),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                    if (sport.tips.length > 3) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Show more tips',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          color: AppTheme.oceanDeep.withOpacity(0.6),
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ],
+                  ...TipsBuilder.build(sport.tips),
                 ],
               ),
             ),
@@ -469,112 +241,6 @@ class _AccordionSportCard extends StatelessWidget {
       ),
     );
   }
-
-  String _getTipIcon(String icon) {
-    switch (icon) {
-      case 'wetsuit':
-        return '🧥';
-      case 'sun':
-        return '☀️';
-      case 'warning':
-        return '⚠️';
-      case 'waves':
-        return '🌊';
-      default:
-        return 'ℹ️';
-    }
-  }
-
-  List<Widget> _buildConditionLabels(SportForecast sport) {
-    final labels = <Widget>[];
-    
-    // Use condition labels from backend if available
-    final conditionLabels = sport.conditionLabels;
-    if (conditionLabels.isEmpty) {
-      return labels; // No labels to display
-    }
-    
-    final greenLabels = conditionLabels['green'] ?? [];
-    final yellowLabels = conditionLabels['yellow'] ?? [];
-    final redLabels = conditionLabels['red'] ?? [];
-    
-    // Helper to build a label chip
-    Widget buildLabelChip(String labelText, Color color) {
-      // Determine if it's a good condition (green) or bad condition (yellow/red)
-      final isGood = color == AppTheme.seafoamGreen || 
-                     color == AppTheme.seafoamGreen.withOpacity(0.8);
-      
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isGood)
-              const Icon(
-                Icons.check,
-                size: 12,
-                color: AppTheme.white,
-              )
-            else
-              const Icon(
-                Icons.close,
-                size: 12,
-                color: AppTheme.white,
-              ),
-            const SizedBox(width: 4),
-            Text(
-              SportFormatters.normalizeConditionLabel(labelText),
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.white,
-                letterSpacing: 0.3,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-    
-    // Display in strict order: green → yellow → red
-    if (greenLabels.isNotEmpty) {
-      labels.add(const SizedBox(height: 8));
-      labels.add(
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: greenLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.seafoamGreen.withOpacity(0.8))).toList(),
-        ),
-      );
-    }
-    if (yellowLabels.isNotEmpty) {
-      labels.add(SizedBox(height: greenLabels.isNotEmpty ? 6 : 8));
-      labels.add(
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: yellowLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.okYellow)).toList(),
-        ),
-      );
-    }
-    if (redLabels.isNotEmpty) {
-      labels.add(SizedBox(height: (greenLabels.isNotEmpty || yellowLabels.isNotEmpty) ? 6 : 8));
-      labels.add(
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: redLabels.map<Widget>((label) => buildLabelChip(label, AppTheme.coralAccent)).toList(),
-        ),
-      );
-    }
-    
-    return labels;
-  }
-  
 
 }
 
@@ -652,50 +318,26 @@ class _BadSportCard extends StatelessWidget {
               
               // "Caution" section - display red condition labels
               if (redLabels.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              'Caution',
-              style: GoogleFonts.inter(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.coralAccent,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: redLabels.map<Widget>((label) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
+                const SizedBox(height: 8),
+                Text(
+                  'Caution',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
                     color: AppTheme.coralAccent,
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.close,
-                        size: 12,
-                        color: AppTheme.white,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        SportFormatters.normalizeConditionLabel(label),
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.white,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: redLabels.map<Widget>((label) => ConditionLabelChip(
+                    label: label,
+                    color: AppTheme.coralAccent,
+                    isGood: false,
+                  )).toList(),
+                ),
+              ],
           
           // Better alternatives
           if (betterAlternatives.isNotEmpty) ...[
