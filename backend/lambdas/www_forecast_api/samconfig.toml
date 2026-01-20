@@ -1,0 +1,10 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "www-forecast-api"
+s3_prefix = "www-forecast-api"
+confirm_changeset = true
+resolve_s3 = true
+region = "us-west-2"
+force_upload = true
+capabilities = "CAPABILITY_IAM"

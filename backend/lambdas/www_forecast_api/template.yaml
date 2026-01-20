@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: SurfingPal Forecast API - Lambda function
+
+Parameters:
+  CustomFunctionName:
+    Type: String
+    Default: www-forecast-api
+  LambdaLayerPandasNumpyLatestArn:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: lambda-layer-pandas-numpy-latest
+
+Resources:
+  ForecastApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Ref CustomFunctionName
+      CodeUri: src/
+      Description: SurfingPal Forecast API - Marine weather forecast with sports scoring
+      Handler: app.lambda_handler
+      MemorySize: 512
+      PackageType: Zip
+      Runtime: python3.12
+      Timeout: 30
+      Tracing: Active
+      Layers:
+        - !Ref LambdaLayerPandasNumpyLatestArn
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+      Tags:
+        Service: SurfingPal
+        Component: ForecastAPI
+
+Outputs:
+  LambdaFunctionArn:
+    Description: "ARN of Forecast API Lambda function"
+    Value: !GetAtt ForecastApiFunction.Arn
+    Export:
+      Name: !Sub "${CustomFunctionName}-arn"
+
+  LambdaFunctionName:
+    Description: "Name of Forecast API Lambda function"
+    Value: !Ref ForecastApiFunction
+    Export:
+      Name: !Sub "${CustomFunctionName}-name"

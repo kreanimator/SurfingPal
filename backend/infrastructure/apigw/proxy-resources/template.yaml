@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: API Gateway routes and integrations for SurfingPal Forecast API
+
+Resources:
+  ForecastApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !ImportValue surfingpal-api-id
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !ImportValue www-forecast-api-arn
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 30000
+
+  RootRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !ImportValue surfingpal-api-id
+      RouteKey: "GET /"
+      Target: !Sub "integrations/${ForecastApiIntegration}"
+
+  HealthRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !ImportValue surfingpal-api-id
+      RouteKey: "GET /health"
+      Target: !Sub "integrations/${ForecastApiIntegration}"
+
+  ForecastRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !ImportValue surfingpal-api-id
+      RouteKey: "POST /api/forecast"
+      Target: !Sub "integrations/${ForecastApiIntegration}"
+
+  OptionsRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !ImportValue surfingpal-api-id
+      RouteKey: "OPTIONS /{proxy+}"
+      Target: !Sub "integrations/${ForecastApiIntegration}"
+
+  ProxyRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !ImportValue surfingpal-api-id
+      RouteKey: "{proxy+}"
+      Target: !Sub "integrations/${ForecastApiIntegration}"
+
+  ForecastApiFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !ImportValue www-forecast-api-arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Join
+        - ''
+        - - 'arn:aws:execute-api:'
+          - !Ref AWS::Region
+          - ':'
+          - !Ref AWS::AccountId
+          - ':'
+          - !ImportValue surfingpal-api-id
+          - '/*/*'
+
+Outputs:
+  IntegrationId:
+    Description: "ID of API Gateway Integration"
+    Value: !Ref ForecastApiIntegration

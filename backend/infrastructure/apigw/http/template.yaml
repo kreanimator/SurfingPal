@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: HTTP API Gateway for SurfingPal Forecast API
+
+Parameters:
+  ApiName:
+    Type: String
+    Default: surfingpal-api
+
+Resources:
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Ref ApiName
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - '*'
+        AllowMethods:
+          - GET
+          - POST
+          - OPTIONS
+        AllowHeaders:
+          - 'content-type'
+          - 'x-amz-date'
+          - 'authorization'
+          - 'x-api-key'
+        MaxAge: 300
+
+  HttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: default
+      AutoDeploy: true
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiGatewayLogGroup.Arn
+        Format: |
+          {
+            "requestId": "$context.requestId",
+            "ip": "$context.identity.sourceIp",
+            "requestTime": "$context.requestTime",
+            "httpMethod": "$context.httpMethod",
+            "routeKey": "$context.routeKey",
+            "status": "$context.status",
+            "protocol": "$context.protocol",
+            "responseLength": "$context.responseLength"
+          }
+
+  ApiGatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/apigateway/${ApiName}"
+      RetentionInDays: 7
+
+Outputs:
+  ApiEndpoint:
+    Description: "HTTP API endpoint URL"
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/default"
+
+  HttpApiId:
+    Description: "ID of HTTP API Gateway"
+    Value: !Ref HttpApi
+    Export:
+      Name: !Sub "${ApiName}-id"

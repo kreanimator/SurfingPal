@@ -1,0 +1,6 @@
+*.zip
+layer-*/
+__pycache__/
+*.pyc
+*.pyo
+.python-version

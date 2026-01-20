@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: "Pandas and NumPy layer for Lambda functions"
+
+Parameters:
+  FileName:
+    Description: Custom name of file to use.
+    Type: String
+    Default: pandas-numpy-stable.zip
+
+Resources:
+  PandasNumpyLayer:
+    Type: "AWS::Lambda::LayerVersion"
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      CompatibleRuntimes:
+        - python3.10
+        - python3.11
+        - python3.12
+        - python3.13
+      Content:
+        S3Bucket: !Sub "app-control-${AWS::AccountId}"
+        S3Key: !Sub "lambda_layers/${FileName}"
+      LayerName: "pandas-numpy"
+      LicenseInfo: "MIT"
+
+  PandasNumpyLayerLatestVersionArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: ARN of the latest published version of pandas-numpy Layer
+      Name: lambda-layer-pandas-numpy-latest
+      Type: String
+      Value:
+        Ref: PandasNumpyLayer

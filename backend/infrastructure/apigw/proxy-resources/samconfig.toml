@@ -1,0 +1,10 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "surfingpal-api-proxy-resources"
+s3_prefix = "surfingpal-api-proxy-resources"
+confirm_changeset = true
+resolve_s3 = true
+region = "us-west-2"
+force_upload = true
+capabilities = "CAPABILITY_IAM"
