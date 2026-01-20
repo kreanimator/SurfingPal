@@ -15,6 +15,8 @@ class SurfingPalApp extends StatelessWidget {
       title: 'SurfingPal',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      themeMode: ThemeMode.light, // Force light theme
+      darkTheme: AppTheme.lightTheme, // Use light theme even if system is dark
       home: const HomeScreen(),
     );
   }

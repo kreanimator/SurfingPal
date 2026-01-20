@@ -93,7 +93,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.sand.withOpacity(0.3), // Warm sand background
+      backgroundColor: AppTheme.sand, // Warm sand background
       appBar: AppBar(
         backgroundColor: AppTheme.white,
         elevation: 0,
