@@ -7,6 +7,7 @@ import '../services/location_service.dart';
 import '../services/geocoding_service.dart';
 import '../models/forecast_data.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_drawer.dart';
 import 'results_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -239,6 +240,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      endDrawer: const AppDrawer(),
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -259,6 +261,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             ),
           ),
           
+          // Hamburger menu (top right)
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Builder(
+                  builder: (scaffoldContext) => IconButton(
+                    icon: Icon(
+                      Icons.menu,
+                      color: AppTheme.oceanDeep.withOpacity(0.8),
+                      size: 28,
+                    ),
+                    onPressed: () =>
+                        Scaffold.of(scaffoldContext).openEndDrawer(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // Content
           SafeArea(
             child: LayoutBuilder(

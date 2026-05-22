@@ -11,6 +11,7 @@ import '../widgets/timeline_strip.dart';
 import '../widgets/sport_card.dart';
 import '../utils/forecast_helpers.dart';
 import '../utils/sport_formatters.dart';
+import '../widgets/app_drawer.dart';
 
 class ResultsScreen extends StatefulWidget {
   final ForecastData forecastData;
@@ -93,7 +94,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.sand, // Warm sand background
+      backgroundColor: AppTheme.sand,
+      endDrawer: const AppDrawer(),
       appBar: AppBar(
         backgroundColor: AppTheme.white,
         elevation: 0,
@@ -101,6 +103,15 @@ class _ResultsScreenState extends State<ResultsScreen> {
           icon: const Icon(Icons.arrow_back, color: AppTheme.slateGray),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          Builder(
+            builder: (scaffoldContext) => IconButton(
+              icon: const Icon(Icons.menu, color: AppTheme.slateGray),
+              onPressed: () =>
+                  Scaffold.of(scaffoldContext).openEndDrawer(),
+            ),
+          ),
+        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {

@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Circular background -->
+  <circle cx="256" cy="256" r="256" fill="#0D3B66"/>
+  
+  <!-- Waves icon (simplified representation) -->
+  <path d="M 150 280 Q 200 240, 250 280 T 350 280 T 450 280" 
+        stroke="white" 
+        stroke-width="20" 
+        fill="none" 
+        stroke-linecap="round"/>
+  <path d="M 150 320 Q 200 280, 250 320 T 350 320 T 450 320" 
+        stroke="white" 
+        stroke-width="20" 
+        fill="none" 
+        stroke-linecap="round"/>
+  <path d="M 150 360 Q 200 320, 250 360 T 350 360 T 450 360" 
+        stroke="white" 
+        stroke-width="20" 
+        fill="none" 
+        stroke-linecap="round"/>
+</svg>
