@@ -62,6 +62,7 @@ Resources:
         DefaultRootObject: index.html
         Aliases:
           - !Ref DomainName
+          - !Sub "www.${DomainName}"
         ViewerCertificate:
           AcmCertificateArn: !ImportValue surfingpal-certificate-arn
           SslSupportMethod: sni-only
@@ -145,6 +146,26 @@ Resources:
     Properties:
       HostedZoneId: !ImportValue surfingpal-hosted-zone-id
       Name: !Ref DomainName
+      Type: AAAA
+      AliasTarget:
+        DNSName: !GetAtt Distribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
+  WwwDnsRecordA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !ImportValue surfingpal-hosted-zone-id
+      Name: !Sub "www.${DomainName}"
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt Distribution.DomainName
+        HostedZoneId: Z2FDTNDATAQYW2
+
+  WwwDnsRecordAAAA:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !ImportValue surfingpal-hosted-zone-id
+      Name: !Sub "www.${DomainName}"
       Type: AAAA
       AliasTarget:
         DNSName: !GetAtt Distribution.DomainName

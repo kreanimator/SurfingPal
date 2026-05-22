@@ -1,9 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String baseUrl = 'https://surfingpal.app';
-  
+  static String get baseUrl {
+    if (kIsWeb) return Uri.base.origin;
+    return 'https://surfingpal.app';
+  }
+
   Future<Map<String, dynamic>> getForecast({
     double? latitude,
     double? longitude,
