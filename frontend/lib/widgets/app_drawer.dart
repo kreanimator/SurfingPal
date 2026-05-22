@@ -212,7 +212,7 @@ class AppDrawer extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
               child: Text(
-                'Made with love for the ocean',
+                'Born from salt, wind & stoke\nv0.1 beta',
                 style: GoogleFonts.inter(
                   fontSize: 12,
                   color: AppTheme.slateGray.withOpacity(0.5),
