@@ -2,6 +2,7 @@
 Lambda handler for SurfingPal Forecast API
 """
 import json
+import logging
 import time
 import traceback
 from typing import Dict, Any
@@ -10,6 +11,9 @@ from aws_xray_sdk.core import xray_recorder, patch_all
 
 patch_all()
 xray_recorder.configure(service='surfingpal-forecast-api', sampling=False)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 from forecast_api import ForecastAPI, haversine_distance
 from scoring import score_forecast
@@ -46,7 +50,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         return {'statusCode': 404, 'headers': CORS_HEADERS,
                 'body': json.dumps({'error': 'Not found'})}
     except Exception as e:
-        print(json.dumps({'level': 'error', 'error': str(e), 'trace': traceback.format_exc()}))
+        logger.error('%s', json.dumps({'error': str(e), 'trace': traceback.format_exc()}))
         return {'statusCode': 500, 'headers': CORS_HEADERS,
                 'body': json.dumps({'error': 'Internal server error'})}
 
@@ -66,7 +70,7 @@ def handle_forecast(event: Dict[str, Any]) -> Dict[str, Any]:
 
         if latitude is None or longitude is None:
             log.update({'status': 400, 'reason': 'missing_coordinates', 'ms': _ms(t0)})
-            print(json.dumps(log))
+            logger.info('%s', json.dumps(log))
             return {'statusCode': 400, 'headers': CORS_HEADERS,
                     'body': json.dumps({
                         'error': 'Location is required. Please enable GPS or enter coordinates manually.',
@@ -107,12 +111,12 @@ def handle_forecast(event: Dict[str, Any]) -> Dict[str, Any]:
 
         log.update({'status': 200, 'hours': len(hourly), 'distance_km': distance_km,
                      'uv': uv_ok, 'ms': _ms(t0)})
-        print(json.dumps(log))
+        logger.info('%s', json.dumps(log))
         return _ok(payload)
 
     except Exception as e:
         log.update({'status': 500, 'error': str(e), 'ms': _ms(t0)})
-        print(json.dumps(log))
+        logger.error('%s', json.dumps(log))
         return {'statusCode': 500, 'headers': CORS_HEADERS,
                 'body': json.dumps({'error': f'Error fetching forecast: {str(e)}'})}
 

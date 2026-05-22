@@ -720,19 +720,6 @@ def score_hour_for_sport(
     # Generate condition labels (categorized by color)
     condition_labels = _generate_condition_labels(sport_key, metrics, context, label, flags)
     
-    # Debug: log if tips are empty (remove in production)
-    if not tips:
-        water_temp_debug = context.get("water_temp_c") or metrics.get("sea_surface_temperature")
-        uv_debug = context.get("uv_index") or metrics.get("uv_index")
-        current_debug = context.get("current_kmh") or metrics.get("ocean_current_velocity_kmh")
-        print(f"DEBUG: No tips for {sport_key} at {hour.get('date', 'unknown')}")
-        print(f"  - water_temp: {water_temp_debug}")
-        print(f"  - uv_index: {uv_debug}")
-        print(f"  - current: {current_debug}")
-        print(f"  - context keys: {list(context.keys())}")
-        print(f"  - metrics has sea_surface_temperature: {'sea_surface_temperature' in metrics}")
-        print(f"  - metrics has uv_index: {'uv_index' in metrics}")
-
     return {
         "sport": sport_key,
         "date": hour.get("date"),

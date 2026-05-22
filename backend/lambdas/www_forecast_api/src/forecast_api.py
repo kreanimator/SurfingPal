@@ -1,8 +1,11 @@
 import json
+import logging
 import math
 import os
 
 import openmeteo_requests
+
+logger = logging.getLogger(__name__)
 
 import pandas as pd
 import requests_cache
@@ -284,8 +287,7 @@ class ForecastAPI:
             # Merge UV index into marine data
             df = self.merge_weather_data(df, weather_df)
         except Exception as e:
-            # If weather API fails, continue without UV index
-            print(f"Warning: Could not fetch UV index: {e}")
+            logger.debug('UV index fetch failed: %s', e)
         
         hourly = self.to_hourly_json(df)
         scores = score_forecast(hourly, rules=self.CONDITION_RULESET)
@@ -303,9 +305,7 @@ class ForecastAPI:
             # "hourly": hourly,  # raw hourly (charts/debug)
             "scores": scores,  # UX-ready scoring output
         }
-        response = json.dumps(payload, indent=2, ensure_ascii=False)
-        print(response)
-        return response
+        return json.dumps(payload, indent=2, ensure_ascii=False)
 
     def get_forecast(self, *, latitude: float, longitude: float) -> WeatherApiResponse:
         response = self.client.weather_api(
