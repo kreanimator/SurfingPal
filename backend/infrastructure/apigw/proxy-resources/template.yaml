@@ -33,6 +33,39 @@ Resources:
       RouteKey: "POST /api/forecast"
       Target: !Sub "integrations/${ForecastApiIntegration}"
 
+  # Feedback API integration
+  FeedbackApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !ImportValue surfingpal-api-id
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !ImportValue surfingpal-feedback-arn
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 10000
+
+  FeedbackRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !ImportValue surfingpal-api-id
+      RouteKey: "POST /api/feedback"
+      Target: !Sub "integrations/${FeedbackApiIntegration}"
+
+  FeedbackFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !ImportValue surfingpal-feedback-arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Join
+        - ''
+        - - 'arn:aws:execute-api:'
+          - !Ref AWS::Region
+          - ':'
+          - !Ref AWS::AccountId
+          - ':'
+          - !ImportValue surfingpal-api-id
+          - '/*/*'
+
   ForecastApiFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:

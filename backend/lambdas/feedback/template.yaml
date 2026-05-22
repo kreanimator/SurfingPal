@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: SurfingPal Feedback - SNS topic, email subscription, and Lambda
+
+Parameters:
+  CustomFunctionName:
+    Type: String
+    Default: surfingpal-feedback
+  NotificationEmail:
+    Type: String
+    Default: vltndev@gmail.com
+
+Resources:
+  FeedbackTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: surfingpal-feedback
+      DisplayName: SurfingPal Feedback
+
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref FeedbackTopic
+      Protocol: email
+      Endpoint: !Ref NotificationEmail
+
+  FeedbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Ref CustomFunctionName
+      CodeUri: src/
+      Description: Receives user feedback and publishes to SNS
+      Handler: app.lambda_handler
+      MemorySize: 128
+      PackageType: Zip
+      Runtime: python3.12
+      Timeout: 10
+      Tracing: Active
+      Environment:
+        Variables:
+          SNS_TOPIC_ARN: !Ref FeedbackTopic
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: !Ref FeedbackTopic
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+      Tags:
+        Service: SurfingPal
+        Component: Feedback
+
+Outputs:
+  FeedbackFunctionArn:
+    Description: ARN of Feedback Lambda function
+    Value: !GetAtt FeedbackFunction.Arn
+    Export:
+      Name: !Sub "${CustomFunctionName}-arn"
+
+  FeedbackTopicArn:
+    Description: ARN of Feedback SNS topic
+    Value: !Ref FeedbackTopic
+    Export:
+      Name: surfingpal-feedback-topic-arn

@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:latlong2/latlong.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 import '../services/geocoding_service.dart';
@@ -66,12 +68,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           latitude = lastPosition.latitude;
           longitude = lastPosition.longitude;
         } else {
-          final result = await _showLocationDialog();
+          final result = await _showMapPickerDialog();
           if (result != null) {
             latitude = result['latitude'] as double?;
             longitude = result['longitude'] as double?;
           }
         }
+      }
+
+      if (latitude == null || longitude == null) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
+        return;
       }
 
       // Fetch forecast with coordinates
@@ -81,19 +90,29 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       );
       final forecastData = ForecastData.fromJson(data);
 
-      // Get location name from coordinates
+      // Get user's location name
       String? locationName;
-      if (latitude != null && longitude != null) {
-        try {
-          locationName = await _geocodingService.getLocationName(
-            latitude!,
-            longitude!,
-          );
-        } catch (e) {
-          locationName = forecastData.meta['coordinates']?['pretty'] as String?;
-        }
-      } else {
+      try {
+        locationName = await _geocodingService.getLocationName(
+          latitude!,
+          longitude!,
+        );
+      } catch (e) {
         locationName = forecastData.meta['coordinates']?['pretty'] as String?;
+      }
+
+      // If user is far from water, also get the water spot name
+      String? waterLocationName;
+      final distanceKm = forecastData.distanceToWaterKm;
+      if (distanceKm != null && distanceKm > 5 &&
+          forecastData.waterLatitude != null &&
+          forecastData.waterLongitude != null) {
+        try {
+          waterLocationName = await _geocodingService.getLocationName(
+            forecastData.waterLatitude!,
+            forecastData.waterLongitude!,
+          );
+        } catch (_) {}
       }
 
       if (!mounted) return;
@@ -105,6 +124,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           pageBuilder: (context, animation, secondaryAnimation) => ResultsScreen(
             forecastData: forecastData,
             locationName: locationName,
+            waterLocationName: waterLocationName,
             latitude: latitude,
             longitude: longitude,
           ),
@@ -145,95 +165,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
-  Future<Map<String, double?>?> _showLocationDialog() async {
+  Future<Map<String, double?>?> _showMapPickerDialog() async {
     return showDialog<Map<String, double?>>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Location Required'),
-        content: const Text(
-          'Unable to get your current location. You can:\n\n'
-          '1. Enable location services in settings\n'
-          '2. Enter coordinates manually\n'
-          '3. Use default test location',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, null),
-            child: const Text('Use Default'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              final result = await _showManualLocationDialog();
-              if (result != null) {
-                Navigator.pop(context, result);
-              }
-            },
-            child: const Text('Enter Manually'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<Map<String, double?>?> _showManualLocationDialog() async {
-    final latController = TextEditingController();
-    final lonController = TextEditingController();
-
-    return showDialog<Map<String, double?>>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Enter Coordinates'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: latController,
-              decoration: const InputDecoration(
-                labelText: 'Latitude',
-                hintText: 'e.g., 32.3443',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: lonController,
-              decoration: const InputDecoration(
-                labelText: 'Longitude',
-                hintText: 'e.g., 34.8637',
-              ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final lat = double.tryParse(latController.text);
-              final lon = double.tryParse(lonController.text);
-              if (lat != null && lon != null) {
-                Navigator.pop(dialogContext, {'latitude': lat, 'longitude': lon});
-              } else {
-                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please enter valid coordinates'),
-                    backgroundColor: AppTheme.coral,
-                  ),
-                );
-              }
-            },
-            child: const Text('OK'),
-          ),
-        ],
-      ),
+      barrierDismissible: false,
+      builder: (dialogContext) => const _MapPickerDialog(),
     );
   }
 
@@ -476,6 +412,132 @@ class _WaveButtonState extends State<_WaveButton> with SingleTickerProviderState
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _MapPickerDialog extends StatefulWidget {
+  const _MapPickerDialog();
+
+  @override
+  State<_MapPickerDialog> createState() => _MapPickerDialogState();
+}
+
+class _MapPickerDialogState extends State<_MapPickerDialog> {
+  LatLng? _selected;
+  final MapController _mapController = MapController();
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    final isWide = screenSize.width > 600;
+
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        width: isWide ? 560 : screenSize.width - 32,
+        height: screenSize.height * 0.7,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: AppTheme.oceanDeep,
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on, color: Colors.white, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _selected == null
+                          ? 'Tap anywhere on the map to pick your spot'
+                          : '${_selected!.latitude.toStringAsFixed(4)}, ${_selected!.longitude.toStringAsFixed(4)}',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white70, size: 20),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: const LatLng(30.0, 35.0),
+                  initialZoom: 3,
+                  onTap: (tapPos, latLng) {
+                    setState(() => _selected = latLng);
+                  },
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.surfingpal.app',
+                  ),
+                  if (_selected != null)
+                    MarkerLayer(
+                      markers: [
+                        Marker(
+                          point: _selected!,
+                          width: 40,
+                          height: 40,
+                          child: const Icon(
+                            Icons.location_on,
+                            color: AppTheme.coralAccent,
+                            size: 40,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: Color(0xFFE0E0E0))),
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _selected == null
+                      ? null
+                      : () => Navigator.pop(context, {
+                            'latitude': _selected!.latitude,
+                            'longitude': _selected!.longitude,
+                          }),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.oceanDeep,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    _selected == null ? 'Pick a location' : 'Check conditions here',
+                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

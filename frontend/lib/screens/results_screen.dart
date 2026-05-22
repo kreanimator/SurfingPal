@@ -16,6 +16,7 @@ import '../widgets/app_drawer.dart';
 class ResultsScreen extends StatefulWidget {
   final ForecastData forecastData;
   final String? locationName;
+  final String? waterLocationName;
   final double? latitude;
   final double? longitude;
 
@@ -23,6 +24,7 @@ class ResultsScreen extends StatefulWidget {
     super.key,
     required this.forecastData,
     this.locationName,
+    this.waterLocationName,
     this.latitude,
     this.longitude,
   });
@@ -133,6 +135,11 @@ class _ResultsScreenState extends State<ResultsScreen> {
                       onlyRecommended: _onlyRecommended,
                     ),
                     
+                    // Distance-to-water banner
+                    if (widget.forecastData.distanceToWaterKm != null &&
+                        widget.forecastData.distanceToWaterKm! > 5)
+                      _buildDistanceBanner(),
+                    
                     // Filters (quiet, optional)
                     FiltersSection(
                       availableSports: _availableSports,
@@ -234,6 +241,47 @@ class _ResultsScreenState extends State<ResultsScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildDistanceBanner() {
+    final distance = widget.forecastData.distanceToWaterKm!;
+    final waterName = widget.waterLocationName;
+    final isVeryFar = distance > 30;
+
+    String message;
+    if (waterName != null) {
+      message = 'Nearest water spot is ${distance.round()} km away · $waterName';
+    } else {
+      message = 'Nearest water spot is ${distance.round()} km from your location';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: isVeryFar
+          ? AppTheme.coralAccent.withOpacity(0.1)
+          : AppTheme.lightSky.withOpacity(0.3),
+      child: Row(
+        children: [
+          Icon(
+            isVeryFar ? Icons.warning_amber_rounded : Icons.location_on_outlined,
+            size: 18,
+            color: isVeryFar ? AppTheme.coralAccent : AppTheme.oceanDeep,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: isVeryFar ? AppTheme.coralAccent : AppTheme.oceanDeep,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

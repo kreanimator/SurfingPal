@@ -1,18 +1,29 @@
 class ForecastData {
   final Map<String, dynamic> meta;
   final List<HourlyForecast> scores;
+  final double? distanceToWaterKm;
+  final double? waterLatitude;
+  final double? waterLongitude;
 
   ForecastData({
     required this.meta,
     required this.scores,
+    this.distanceToWaterKm,
+    this.waterLatitude,
+    this.waterLongitude,
   });
 
   factory ForecastData.fromJson(Map<String, dynamic> json) {
+    final meta = json['meta'] as Map<String, dynamic>;
+    final coords = meta['coordinates'] as Map<String, dynamic>?;
     return ForecastData(
-      meta: json['meta'] as Map<String, dynamic>,
+      meta: meta,
       scores: (json['scores'] as List)
           .map((item) => HourlyForecast.fromJson(item as Map<String, dynamic>))
           .toList(),
+      distanceToWaterKm: (meta['distance_to_water_km'] as num?)?.toDouble(),
+      waterLatitude: (coords?['latitude'] as num?)?.toDouble(),
+      waterLongitude: (coords?['longitude'] as num?)?.toDouble(),
     );
   }
 }

@@ -1,4 +1,5 @@
 import json
+import math
 import os
 
 import openmeteo_requests
@@ -381,6 +382,17 @@ class ForecastAPI:
         )
         
         return merged
+
+def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculate distance in km between two lat/lon points using the haversine formula."""
+    R = 6371.0
+    lat1_r, lon1_r = math.radians(lat1), math.radians(lon1)
+    lat2_r, lon2_r = math.radians(lat2), math.radians(lon2)
+    dlat = lat2_r - lat1_r
+    dlon = lon2_r - lon1_r
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1_r) * math.cos(lat2_r) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
 
 if __name__ == "__main__":
     api = ForecastAPI()
