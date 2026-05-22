@@ -7,6 +7,8 @@ import time
 import traceback
 from typing import Dict, Any
 
+logging.getLogger('aws_xray_sdk').setLevel(logging.ERROR)
+
 from aws_xray_sdk.core import xray_recorder, patch_all
 
 patch_all()
