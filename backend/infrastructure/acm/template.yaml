@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: ACM certificate for surfingpal.app
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: surfingpal.app
+
+Resources:
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref DomainName
+      SubjectAlternativeNames:
+        - !Sub "*.${DomainName}"
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref DomainName
+          HostedZoneId: !ImportValue surfingpal-hosted-zone-id
+
+Outputs:
+  CertificateArn:
+    Description: ACM certificate ARN
+    Value: !Ref Certificate
+    Export:
+      Name: surfingpal-certificate-arn

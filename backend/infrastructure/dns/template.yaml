@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Route53 hosted zone for surfingpal.app
+
+Parameters:
+  DomainName:
+    Type: String
+    Default: surfingpal.app
+
+Resources:
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: !Ref DomainName
+      HostedZoneConfig:
+        Comment: !Sub "Hosted zone for ${DomainName}"
+
+Outputs:
+  HostedZoneId:
+    Description: Route53 hosted zone ID
+    Value: !Ref HostedZone
+    Export:
+      Name: surfingpal-hosted-zone-id
+
+  HostedZoneNameServers:
+    Description: Nameservers to set at your domain registrar
+    Value: !Join [", ", !GetAtt HostedZone.NameServers]

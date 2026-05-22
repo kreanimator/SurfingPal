@@ -2,8 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // Production API endpoint
-  static const String baseUrl = 'https://8amfpicl1f.execute-api.us-west-2.amazonaws.com/default';
+  static const String baseUrl = 'https://surfingpal.app';
   
   Future<Map<String, dynamic>> getForecast({
     double? latitude,
