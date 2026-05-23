@@ -223,8 +223,11 @@ class _SportTimelineRow extends StatelessWidget {
                   final sportForecast = hourly.sports[sport];
                   final isSelected = selectedHour == hourly.date && selectedSport == sport;
                   
+                  final hour = DateFormat('HH').format(DateTime.parse(hourly.date));
+
                   if (sportForecast == null) {
                     return _TimelineCell(
+                      hour: hour,
                       status: null,
                       isSelected: isSelected,
                       onTap: () => onCellTap(hourly.date),
@@ -233,6 +236,7 @@ class _SportTimelineRow extends StatelessWidget {
 
                   if (onlyRecommended && !ForecastHelpers.isRecommended(sportForecast.label)) {
                     return _TimelineCell(
+                      hour: hour,
                       status: null,
                       isSelected: isSelected,
                       onTap: () => onCellTap(hourly.date),
@@ -243,6 +247,7 @@ class _SportTimelineRow extends StatelessWidget {
                   final status = sportForecast.label.toLowerCase();
 
                   return _TimelineCell(
+                    hour: hour,
                     status: status,
                     statusColor: statusColor,
                     isSelected: isSelected,
@@ -282,15 +287,17 @@ class _SportTimelineRow extends StatelessWidget {
   }
 }
 
-/// Timeline cell (color only, no labels)
+/// Timeline cell with hour label
 class _TimelineCell extends StatelessWidget {
-  final String? status; // 'great', 'ok', 'marginal', 'bad'
+  final String hour;
+  final String? status;
   final Color? statusColor;
   final bool isSelected;
   final VoidCallback onTap;
   final String? tooltip;
 
   const _TimelineCell({
+    required this.hour,
     this.status,
     this.statusColor,
     required this.isSelected,
@@ -301,10 +308,6 @@ class _TimelineCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = statusColor ?? AppTheme.slateGray.withOpacity(0.2);
-    final height = status == 'great' ? 24.0 
-        : status == 'ok' ? 20.0 
-        : status == 'marginal' ? 16.0 
-        : 12.0;
 
     Widget cell = GestureDetector(
       onTap: onTap,
@@ -321,14 +324,23 @@ class _TimelineCell extends StatelessWidget {
           : null,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 1),
-        width: 26,
-        height: height,
+        width: 28,
+        height: 26,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isSelected ? color : color.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(4),
           border: isSelected
-              ? Border.all(color: color, width: 2)
+              ? Border.all(color: AppTheme.oceanDeep, width: 2)
               : null,
+        ),
+        child: Text(
+          hour,
+          style: GoogleFonts.inter(
+            fontSize: 8,
+            fontWeight: FontWeight.w600,
+            color: _textColorFor(status),
+          ),
         ),
       ),
     );
@@ -342,12 +354,18 @@ class _TimelineCell extends StatelessWidget {
 
     return cell;
   }
+
+  Color _textColorFor(String? status) {
+    if (status == null) return AppTheme.slateGray.withOpacity(0.5);
+    if (status == 'great' || status == 'bad') return Colors.white;
+    return Colors.white.withOpacity(0.9);
+  }
 }
 
-/// Single sport timeline hour (color only, no labels)
+/// Single sport timeline hour with label
 class _TimelineHour extends StatelessWidget {
   final String time;
-  final String? status; // 'great', 'ok', 'marginal', 'bad'
+  final String? status;
   final Color? statusColor;
   final bool isSelected;
   final VoidCallback onTap;
@@ -363,28 +381,35 @@ class _TimelineHour extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = statusColor ?? AppTheme.slateGray.withOpacity(0.3);
-    final height = status == 'great' ? 28.0 
-        : status == 'ok' ? 22.0 
-        : status == 'marginal' ? 18.0 
-        : 14.0;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 2),
         width: 36,
-        height: height,
+        height: 30,
         alignment: Alignment.center,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          width: 28,
-          height: height,
+          width: 32,
+          height: 30,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected ? color : color.withOpacity(0.7),
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(4),
             border: isSelected
-                ? Border.all(color: color, width: 2)
+                ? Border.all(color: AppTheme.oceanDeep, width: 2)
                 : null,
+          ),
+          child: Text(
+            time,
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+              color: status == null
+                  ? AppTheme.slateGray.withOpacity(0.5)
+                  : Colors.white,
+            ),
           ),
         ),
       ),
