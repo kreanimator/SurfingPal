@@ -225,29 +225,23 @@ def _generate_condition_labels(
     # Wave conditions (for wave sports)
     if sport_key in {"surfing", "sup_surf"}:
         if wave_height is not None and wave_period is not None:
-            if wave_height >= 0.5 and wave_period >= 6:
+            if wave_height >= 0.5 and wave_period >= 10:
                 add_label(green_labels, "great_waves")
-            elif wave_height >= 0.3 and wave_period >= 4:
+            elif wave_height >= 0.3 and wave_period >= 8:
                 add_label(green_labels, "good_waves")
-                # For OK/Marginal, show why it's not Great
                 if status in {"ok", "marginal"}:
-                    if wave_height < 0.5 or wave_period < 6:
+                    if wave_height < 0.5 or wave_period < 10:
                         add_label(yellow_labels, "moderate_waves")
             else:
-                # Small waves - show as negative for OK/Marginal/Bad
                 if status in {"ok", "marginal", "bad"}:
                     add_label(yellow_labels, "small_waves")
-        
+
         # Chop (wind waves)
         if wind_wave_height is not None:
-            if wind_wave_height >= 0.5:
+            if wind_wave_height >= 0.8:
                 add_label(red_labels, "chop")
-            elif wind_wave_height >= 0.3:
+            elif wind_wave_height >= 0.4:
                 add_label(yellow_labels, "chop")
-            elif wind_wave_height >= 0.15:
-                # Show moderate chop for OK/Marginal status
-                if status in {"ok", "marginal"}:
-                    add_label(yellow_labels, "chop")
             elif wind_wave_height < 0.15 and status == "great":
                 add_label(green_labels, "low_chop")
     
@@ -255,7 +249,7 @@ def _generate_condition_labels(
     if sport_key == "sup":
         # Wave height
         if wave_height is not None:
-            if wave_height >= 0.8:
+            if wave_height >= 1.0:
                 add_label(red_labels, "too_wavy")
             elif wave_height > 0.3 and wave_height <= 0.5:
                 # OK range - above great_max but within ok_max
@@ -266,7 +260,7 @@ def _generate_condition_labels(
         
         # Wind wave height (chop)
         if wind_wave_height is not None:
-            if wind_wave_height >= 0.45:
+            if wind_wave_height >= 0.5:
                 add_label(red_labels, "too_choppy")
             elif wind_wave_height > 0.15 and wind_wave_height <= 0.25:
                 # OK range

@@ -72,22 +72,23 @@ class ForecastAPI:
                     "sea_surface_temperature",
                 ],
                 "hard_limits": {
-                    "current_velocity_kmh": {"bad_from": 8.0},  # very strong current
+                    "current_velocity_kmh": {"bad_from": 8.0},
                 },
                 "thresholds": {
-                    # "fun zone"
-                    "wave_height_m": {"min": 0.6, "ideal": (0.9, 2.0), "max": 3.0},
-                    "wave_period_s": {"min": 7.0, "ideal": (9.0, 14.0), "max": 18.0},
-                    # cleaner surf tends to be swell-dominant, not wind-chop dominant
-                    "wind_wave_height_m": {"ideal_max": 0.5, "bad_from": 0.9},
-                    "wind_wave_period_s": {"bad_max": 4.0},  # short-period chop
+                    # Sources: 0.5-1m beginner, 0.9-1.8m optimal, 2m+ advanced (inspiredbysports, lapointcamps, surfline)
+                    "wave_height_m": {"min": 0.5, "ideal": (0.9, 2.0), "max": 3.5},
+                    # Sources: <8s windchop, 10-14s good, 14s+ excellent (kazawave, surfology, breakfinder)
+                    "wave_period_s": {"min": 8.0, "ideal": (10.0, 14.0), "max": 20.0},
+                    # Offshore <10kts ideal; chop >0.5m degrades wave quality (quiversurf, surfline)
+                    "wind_wave_height_m": {"ideal_max": 0.4, "bad_from": 0.8},
+                    "wind_wave_period_s": {"bad_max": 4.0},
                     "swell_share": {
-                        # swell_share = swell_wave_height / max(wave_height, eps)
                         "good_from": 0.6,
                         "great_from": 0.75,
                     },
+                    # NOAA: rip currents 1-2 ft/s typical; 3+ ft/s is Olympic-swimmer speed
                     "current_velocity_kmh": {"warn_from": 3.0, "bad_from": 6.0},
-                    "water_temp_c": {"nice_from": 18.0},  # UX-only "comfort"
+                    "water_temp_c": {"nice_from": 18.0},
                 },
                 "weights": {
                     "wave_height": 0.30,
@@ -123,16 +124,20 @@ class ForecastAPI:
                     "sea_surface_temperature",
                 ],
                 "hard_limits": {
-                    "wave_height_m": {"bad_from": 0.8},  # above this, not safe for SUP
-                    "wind_wave_height_m": {"bad_from": 0.45},  # too choppy
-                    "current_velocity_kmh": {"bad_from": 5.0},  # too strong current
+                    # Sources: 1m+ is experienced-only territory (barrachousup, supmag uk)
+                    "wave_height_m": {"bad_from": 1.0},
+                    # Sources: >15 knots wind dangerous ≈ 0.5m+ chop (watersportspro, aquabound)
+                    "wind_wave_height_m": {"bad_from": 0.5},
+                    "current_velocity_kmh": {"bad_from": 5.0},
                 },
                 "thresholds": {
-                    # SUP flatwater likes low waves/chop
+                    # Sources: <0.5m flat/great, 0.5-1m confident paddlers only (barrachousup, supmag)
                     "wave_height_m": {"great_max": 0.3, "ok_max": 0.5},
-                    "wind_wave_height_m": {"great_max": 0.15, "ok_max": 0.25},
-                    "wind_wave_period_s": {"bad_max": 3.5},
-                    "current_velocity_kmh": {"warn_from": 2.5, "bad_from": 5.0},
+                    # Sources: <10 knots ideal ≈ <0.2m wind waves (watersportspro, witteringsup)
+                    "wind_wave_height_m": {"great_max": 0.15, "ok_max": 0.3},
+                    # Short-period chop is extremely tiring on SUP
+                    "wind_wave_period_s": {"bad_max": 3.0},
+                    "current_velocity_kmh": {"warn_from": 2.0, "bad_from": 5.0},
                     "water_temp_c": {"nice_from": 18.0},
                 },
                 "weights": {
@@ -160,14 +165,16 @@ class ForecastAPI:
                     "ocean_current_velocity",
                 ],
                 "hard_limits": {
-                    "wave_height_m": {"bad_from": 2.8},  # too big for SUP surf
-                    "wind_wave_height_m": {"bad_from": 1.2},  # too choppy
+                    "wave_height_m": {"bad_from": 2.5},
+                    "wind_wave_height_m": {"bad_from": 1.0},
                     "current_velocity_kmh": {"bad_from": 6.0},
                 },
                 "thresholds": {
-                    "wave_height_m": {"min": 0.4, "ideal": (0.6, 1.5), "max": 2.5},
-                    "wave_period_s": {"min": 7.0, "ideal": (8.5, 13.0), "max": 18.0},
-                    "wind_wave_height_m": {"ideal_max": 0.6, "bad_from": 1.0},
+                    # SUP catches waves easier due to volume; 0.5-1m beginner, 1-2m fun (barrachousup, supmag)
+                    "wave_height_m": {"min": 0.3, "ideal": (0.5, 1.5), "max": 2.2},
+                    # Sources: 10s+ is where quality starts for SUP surf (supmag, barrachousup planning)
+                    "wave_period_s": {"min": 8.0, "ideal": (9.0, 13.0), "max": 18.0},
+                    "wind_wave_height_m": {"ideal_max": 0.5, "bad_from": 0.9},
                     "wind_wave_period_s": {"bad_max": 4.0},
                     "current_velocity_kmh": {"warn_from": 3.0, "bad_from": 6.0},
                 },
@@ -194,17 +201,16 @@ class ForecastAPI:
                     "ocean_current_velocity",
                 ],
                 "hard_limits": {
-                    "wave_height_m": {"bad_from": 4.5},  # too dangerous
+                    # Sources: Beaufort 8+ (34-40kts) = 5.5m seas, extremely dangerous (NOAA beaufort)
+                    "wave_height_m": {"bad_from": 4.0},
                     "current_velocity_kmh": {"bad_from": 7.0},
                 },
                 "thresholds": {
-                    # Using wind_wave_height as "there is wind energy on the surface"
-                    "wind_wave_height_m": {"min": 0.25, "ideal": (0.4, 1.2), "max": 2.0},
-                    # Too short => messy slop; too big => advanced conditions
+                    # Wind proxy: planing starts ~12kts ≈ 0.3m wind waves; ideal 15-25kts ≈ 0.4-1.5m (ourextremesports, tws)
+                    "wind_wave_height_m": {"min": 0.3, "ideal": (0.4, 1.5), "max": 2.5},
                     "wind_wave_period_s": {"min": 2.0, "ideal": (2.5, 5.0), "max": 7.0},
-
-                    # Optional: wave sailing vs freeride.
-                    "wave_height_m": {"ok_max": 2.5, "bad_from": 4.0},
+                    # Wave sailing: 2.5m manageable; 4m+ expert-only (tws el medano, beaufort scale)
+                    "wave_height_m": {"ok_max": 2.5, "bad_from": 3.5},
                     "wave_period_s": {"ok_range": (6.0, 14.0)},
                     "current_velocity_kmh": {"warn_from": 3.0, "bad_from": 6.0},
                 },
@@ -234,14 +240,16 @@ class ForecastAPI:
                     "ocean_current_velocity",
                 ],
                 "hard_limits": {
-                    "wave_height_m": {"bad_from": 4.0},  # too dangerous
+                    # Sources: 3-4ft+ (1-1.2m) waves need higher skills; 3.5m is danger zone (mackiteboarding)
+                    "wave_height_m": {"bad_from": 3.5},
                     "current_velocity_kmh": {"bad_from": 7.0},
                 },
                 "thresholds": {
-                    # Many kite sessions happen in choppy but manageable sea states
-                    "wind_wave_height_m": {"min": 0.2, "ideal": (0.3, 0.9), "max": 1.6},
+                    # Wind proxy: 12mph min ≈ 0.2m; 12-20mph ideal ≈ 0.3-1.0m (mackiteboarding, surfertoday)
+                    "wind_wave_height_m": {"min": 0.2, "ideal": (0.3, 1.0), "max": 1.8},
                     "wind_wave_period_s": {"min": 1.8, "ideal": (2.2, 4.5), "max": 6.5},
-                    "wave_height_m": {"ok_max": 2.0, "bad_from": 3.5},
+                    # Kiters handle bigger seas than surfers; ok up to 2.5m (mackiteboarding, berito)
+                    "wave_height_m": {"ok_max": 2.5, "bad_from": 3.5},
                     "current_velocity_kmh": {"warn_from": 3.0, "bad_from": 6.0},
                 },
                 "weights": {
